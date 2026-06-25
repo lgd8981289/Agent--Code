@@ -1,0 +1,11 @@
+{
+	"type": "module",
+	"scripts": {
+		"setup": "node --env-file=.env milvus-rag-store.js setup",
+		"search": "node --env-file=.env milvus-rag-store.js search",
+		"update": "node --env-file=.env milvus-rag-store.js update"
+	},
+	"dependencies": {
+		"@zilliz/milvus2-sdk-node": "^3.0.3"
+	}
+}

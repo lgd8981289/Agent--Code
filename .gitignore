@@ -1,1 +1,59 @@
+# Environment variables and local secrets
 .env
+.env.*
+!.env.example
+!.env.*.example
+
+# Node.js dependencies and generated files
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+.next/
+.nuxt/
+.turbo/
+.nyc_output/
+coverage/
+dist/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python bytecode, virtual environments and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.hypothesis/
+.tox/
+.coverage
+coverage.xml
+htmlcov/
+build/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Local database and Docker runtime data
+volumes/
+
+# Logs and temporary files
+*.log
+*.pid
+*.tmp
+*.swp
+*.swo
+*~
+
+# Operating system and editor metadata
+.DS_Store
+Thumbs.db
+.idea/

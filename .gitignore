@@ -1,8 +1,6 @@
 # Environment variables and local secrets
 .env
 .env.*
-!.env.example
-!.env.*.example
 
 # Node.js dependencies and generated files
 node_modules/

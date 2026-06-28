@@ -1,3 +1,5 @@
+// Node.js 版本：模拟大模型逐个生成 Token 的过程。
+
 // candidateMap 用来模拟：在不同上下文下，模型可能生成的候选 Token 及其 Logit 分数
 // Map 的 key 表示“当前上下文”
 // Map 的 value 表示“候选 Token 列表”

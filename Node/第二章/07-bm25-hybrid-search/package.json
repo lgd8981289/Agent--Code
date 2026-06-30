@@ -1,0 +1,19 @@
+{
+	"name": "07-bm25-hybrid-search",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"demo": "node --env-file=.env hybrid-search.js"
+	},
+	"dependencies": {
+		"@zilliz/milvus2-sdk-node": "3.0.3"
+	},
+	"overrides": {
+		"thrift": {
+			"uuid": "11.1.1"
+		}
+	}
+}

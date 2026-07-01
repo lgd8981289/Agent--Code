@@ -1,0 +1,11 @@
+{
+	"name": "08-query-rewrite-multi-query",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"demo": "node --env-file=.env query-optimizer.js"
+	}
+}

@@ -1,0 +1,8 @@
+[project]
+name = "agent-course-bm25-hybrid-search"
+version = "0.1.0"
+description = "Python implementation of the BM25 and dense hybrid search lesson"
+requires-python = ">=3.11"
+dependencies = [
+    "pymilvus==2.6.12",
+]

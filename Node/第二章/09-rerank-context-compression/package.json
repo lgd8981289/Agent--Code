@@ -1,0 +1,13 @@
+{
+	"name": "09-rerank-context-compression",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"rerank": "node --env-file=.env rerank-demo.js",
+		"compress": "node --env-file=.env rerank-and-compress.js",
+		"demo": "node --env-file=.env rerank-and-compress.js"
+	}
+}

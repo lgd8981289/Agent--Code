@@ -1,0 +1,12 @@
+{
+	"name": "11-rag-evaluation",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"retrieval": "node run-evaluation.js retrieval",
+		"evaluate": "node --env-file=.env run-evaluation.js full"
+	}
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+server/.env
+server/.env.*
+volumes/
+storage/documents/
+.DS_Store

@@ -8,6 +8,7 @@ import type { Request } from 'express'
 
 @Injectable()
 export class AdminGuard implements CanActivate {
+	/** 限制文档上传和版本更新接口只能由企业管理员调用。 */
 	canActivate(context: ExecutionContext): boolean {
 		const request = context.switchToHttp().getRequest<Request>()
 

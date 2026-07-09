@@ -59,6 +59,9 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 		})
 	}
 
+	/**
+	 * NestJS 模块初始化时连接 Milvus，并确保业务 Collection 可用。
+	 */
 	async onModuleInit(): Promise<void> {
 		try {
 			await this.client.connectPromise
@@ -70,10 +73,14 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 		}
 	}
 
+	/** 应用退出时主动关闭 Milvus 连接。 */
 	async onApplicationShutdown(): Promise<void> {
 		await this.client.closeConnection()
 	}
 
+	/**
+	 * 检查 Milvus SDK 返回状态，并把失败操作转换成明确异常。
+	 */
 	private ensureOk(response: unknown, action: string): void {
 		const wrapper = response as Record<string, unknown> | undefined
 		const status =
@@ -86,16 +93,22 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 		}
 	}
 
+	/**
+	 * 创建或加载企业知识库 Collection。
+	 * Collection 同时包含权限、版本、Dense 向量和 BM25 稀疏向量字段。
+	 */
 	private async ensureCollection(): Promise<void> {
 		const exists = await this.client.hasCollection({
 			collection_name: this.collectionName
 		})
 
 		if (!exists.value) {
+			// Collection 只在首次启动时创建，后续启动直接加载已有数据。
 			const result = await this.client.createCollection({
 				collection_name: this.collectionName,
 				num_partitions: 16,
 				fields: [
+					// Chunk ID 是主键，tenant_id 作为 Partition Key 参与租户路由。
 					{
 						name: 'chunk_id',
 						data_type: DataType.VarChar,
@@ -148,6 +161,7 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 						enable_analyzer: true,
 						enable_match: true,
 						analyzer_params: {
+							// 中文 BM25 使用 jieba 分词，并移除单独的标点 Token。
 							tokenizer: 'jieba',
 							filter: ['removepunct']
 						}
@@ -164,6 +178,7 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 					{ name: 'updated_at', data_type: DataType.Int64 }
 				],
 				functions: [
+					// Milvus 根据 content 自动生成 sparse_vector，应用层无需手动计算。
 					{
 						name: 'content_bm25',
 						type: FunctionType.BM25,
@@ -195,6 +210,10 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 		})
 	}
 
+	/**
+	 * 根据 Metadata Filter 查询 Chunk 数据。
+	 * 主要用于文档列表、版本历史和更新前检查。
+	 */
 	async query(filter: string, limit = 5000): Promise<Record<string, unknown>[]> {
 		const result = await this.client.query({
 			collection_name: this.collectionName,
@@ -206,6 +225,9 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 		return (result.data ?? []) as Record<string, unknown>[]
 	}
 
+	/**
+	 * 批量写入新版本 Chunk，并等待数据进入持久化存储。
+	 */
 	async insertChunks(rows: KnowledgeChunkRow[]): Promise<void> {
 		const result = await this.client.insert({
 			collection_name: this.collectionName,
@@ -215,6 +237,10 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 		await this.client.flushSync({ collection_names: [this.collectionName] })
 	}
 
+	/**
+	 * 通过 Partial Upsert 切换一组 Chunk 的生效状态。
+	 * tenant_id 必须一起提供，以便 Milvus 正确路由 Partition Key。
+	 */
 	async setActive(
 		rows: Array<{ chunkId: string; tenantId: string }>,
 		isActive: boolean
@@ -234,12 +260,17 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 		await this.client.flushSync({ collection_names: [this.collectionName] })
 	}
 
+	/**
+	 * 在用户权限范围内执行 Dense + BM25 混合检索。
+	 * 两路召回使用同一条权限 Filter，再通过 RRF 融合排名。
+	 */
 	async hybridSearch(
 		user: DemoUser,
 		question: string,
 		queryVector: number[],
 		limit = 8
 	): Promise<{ filter: string; chunks: RetrievedChunk[] }> {
+		// 权限必须在召回前生效，不能等候选资料返回后再由应用层过滤。
 		const filter = buildPermissionFilter(user)
 		const result = await this.client.hybridSearch({
 			collection_name: this.collectionName,
@@ -269,6 +300,7 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 		}
 	}
 
+	/** 把 Milvus 原始搜索结果转换成业务统一的 Chunk 结构。 */
 	private toRetrievedChunk(row: Record<string, unknown>): RetrievedChunk {
 		return {
 			chunkId: String(row.chunk_id ?? row.id),

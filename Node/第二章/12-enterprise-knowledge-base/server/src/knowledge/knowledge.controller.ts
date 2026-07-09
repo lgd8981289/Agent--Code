@@ -17,6 +17,7 @@ import { KnowledgeService } from './knowledge.service.js'
 export class KnowledgeController {
 	constructor(private readonly knowledge: KnowledgeService) {}
 
+	/** 接收用户问题，并使用当前登录身份执行知识库问答。 */
 	@Post('query')
 	@HttpCode(HttpStatus.OK)
 	query(

@@ -25,6 +25,10 @@ export class AiService {
 		)
 	}
 
+	/**
+	 * 校验模型调用所需配置，并返回可用的 API Key。
+	 * 配置不完整时会提前终止请求，避免把无效调用发送给模型服务。
+	 */
 	private assertConfig(): string {
 		if (!this.apiKey) {
 			throw new ServiceUnavailableException(
@@ -41,10 +45,17 @@ export class AiService {
 		return this.apiKey
 	}
 
+	/**
+	 * 把文本批量转换成稠密向量。
+	 *
+	 * @param inputs 等待向量化的 Chunk 或用户问题。
+	 * @returns 与 inputs 顺序一致的向量数组。
+	 */
 	async createEmbeddings(inputs: string[]): Promise<number[][]> {
 		const apiKey = this.assertConfig()
 		const output: number[][] = []
 
+		// Embedding API 单次最多处理 64 条数据，文档较大时需要分批调用。
 		for (let start = 0; start < inputs.length; start += 64) {
 			const batch = inputs.slice(start, start + 64)
 			const response = await this.fetchWithRetry(
@@ -73,6 +84,7 @@ export class AiService {
 				)
 			}
 
+			// 根据接口返回的 index 恢复输入顺序，保证 Chunk 和向量一一对应。
 			output.push(
 				...result.data
 					.sort((first, second) => first.index - second.index)
@@ -83,6 +95,13 @@ export class AiService {
 		return output
 	}
 
+	/**
+	 * 使用专用 Rerank 模型对候选 Chunk 重新排序。
+	 *
+	 * @param question 用户的原始问题。
+	 * @param chunks 混合检索召回的候选 Chunk。
+	 * @param topN 精排后保留的结果数量。
+	 */
 	async rerank(
 		question: string,
 		chunks: RetrievedChunk[],
@@ -90,21 +109,26 @@ export class AiService {
 	): Promise<RerankedChunk[]> {
 		if (chunks.length === 0) return []
 		const apiKey = this.assertConfig()
-		const response = await this.fetchWithRetry('https://open.bigmodel.cn/api/paas/v4/rerank', {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${apiKey}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				model: this.rerankModel,
-				query: question,
-				documents: chunks.map((chunk) => `${chunk.title}\n${chunk.content}`),
-				top_n: Math.min(topN, chunks.length),
-				return_documents: false,
-				return_raw_scores: true
-			})
-		})
+		const response = await this.fetchWithRetry(
+			'https://open.bigmodel.cn/api/paas/v4/rerank',
+			{
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${apiKey}`,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					model: this.rerankModel,
+					query: question,
+					documents: chunks.map(
+						(chunk) => `${chunk.title}\n${chunk.content}`
+					),
+					top_n: Math.min(topN, chunks.length),
+					return_documents: false,
+					return_raw_scores: true
+				})
+			}
+		)
 		const result = (await response.json()) as {
 			results?: Array<{ index: number; relevance_score: number }>
 		}
@@ -126,6 +150,10 @@ export class AiService {
 		})
 	}
 
+	/**
+	 * 根据精排后的 Chunk 生成有依据的回答。
+	 * 没有候选资料时直接拒答，不再产生一次无意义的模型调用。
+	 */
 	async generateAnswer(
 		question: string,
 		chunks: RerankedChunk[]
@@ -172,9 +200,14 @@ export class AiService {
 			throw new ServiceUnavailableException(`模型没有返回合法 JSON：${content}`)
 		}
 
+		// JSON 模式只能约束输出格式，模型返回的状态和引用仍需程序校验。
 		return this.validateAnswer(parsed, chunks)
 	}
 
+	/**
+	 * 构造答案生成所需的 system 和 user message。
+	 * system message 同时约束拒答、引用范围和结构化输出格式。
+	 */
 	private buildAnswerMessages(question: string, chunks: RerankedChunk[]) {
 		return [
 			{
@@ -204,6 +237,10 @@ export class AiService {
 		]
 	}
 
+	/**
+	 * 校验模型返回的回答结构和来源 ID。
+	 * 来源必须来自本次候选集，防止模型编造不存在的 Chunk 引用。
+	 */
 	private validateAnswer(
 		value: unknown,
 		chunks: RerankedChunk[]
@@ -240,6 +277,10 @@ export class AiService {
 		}
 	}
 
+	/**
+	 * 创建系统统一的拒答结果。
+	 * 拒答时不返回来源，避免无关资料被误认为答案依据。
+	 */
 	private createRefusal(): GroundedAnswer {
 		return {
 			status: 'insufficient_evidence',
@@ -248,6 +289,10 @@ export class AiService {
 		}
 	}
 
+	/**
+	 * 发送模型请求，并对限流和服务端错误进行有限次数重试。
+	 * 非重试类错误会直接返回，由调用方解析具体错误信息。
+	 */
 	private async fetchWithRetry(
 		url: string,
 		init: RequestInit,
@@ -260,6 +305,7 @@ export class AiService {
 			const retryable = response.status === 429 || response.status >= 500
 
 			if (!retryable || attempt === maxAttempts) return response
+			// 使用指数退避，避免模型服务繁忙时立即连续重试。
 			await new Promise((resolve) => setTimeout(resolve, 400 * 2 ** (attempt - 1)))
 		}
 

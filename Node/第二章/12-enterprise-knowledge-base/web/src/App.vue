@@ -89,6 +89,9 @@ const filteredDocuments = computed(() => {
 	})
 })
 
+/**
+ * 初始化演示用户和后端状态，再加载默认身份能够访问的文档。
+ */
 onMounted(async () => {
 	try {
 		const [userList] = await Promise.all([getUsers(), checkHealth()])
@@ -100,6 +103,7 @@ onMounted(async () => {
 	}
 })
 
+/** 检查后端是否可用，并更新顶部服务状态。 */
 async function checkHealth() {
 	try {
 		serverOnline.value = (await getHealth()).status === 'ok'
@@ -108,6 +112,9 @@ async function checkHealth() {
 	}
 }
 
+/**
+ * 切换演示身份后清空上一轮回答，并重新请求该身份的文档列表。
+ */
 async function changeUser() {
 	result.value = null
 	lastQuestion.value = ''
@@ -115,6 +122,7 @@ async function changeUser() {
 	await loadDocuments()
 }
 
+/** 加载当前身份有权访问的生效文档。 */
 async function loadDocuments() {
 	if (!activeToken.value) return
 	loadingDocuments.value = true
@@ -127,10 +135,16 @@ async function loadDocuments() {
 	}
 }
 
+/**
+ * 提交企业知识库问题，并维护查询过程中的页面状态。
+ *
+ * @param prefilledQuestion 点击示例问题时传入的预设文本。
+ */
 async function ask(prefilledQuestion?: string) {
 	const submittedQuestion = (prefilledQuestion ?? question.value).trim()
 	if (!submittedQuestion || !activeToken.value) return
 
+	// lastQuestion 独立保存本轮问题，避免输入框变化影响已经展示的消息。
 	question.value = submittedQuestion
 	lastQuestion.value = submittedQuestion
 	asking.value = true
@@ -145,6 +159,7 @@ async function ask(prefilledQuestion?: string) {
 	}
 }
 
+/** 重置表单并打开新建文档弹窗。 */
 function openCreate() {
 	editingDocument.value = null
 	documentTitle.value = ''
@@ -155,6 +170,7 @@ function openCreate() {
 	showDocumentModal.value = true
 }
 
+/** 使用现有 Metadata 填充表单，并打开版本更新弹窗。 */
 function openUpdate(document: DocumentSummary) {
 	editingDocument.value = document
 	documentTitle.value = document.title
@@ -165,10 +181,15 @@ function openUpdate(document: DocumentSummary) {
 	showDocumentModal.value = true
 }
 
+/** 保存文件选择器中的第一个 Markdown 文件。 */
 function chooseFile(event: Event) {
 	selectedFile.value = (event.target as HTMLInputElement).files?.[0] ?? null
 }
 
+/**
+ * 提交文档及权限 Metadata。
+ * 保存成功后刷新列表；内容未变化时保留弹窗并展示跳过原因。
+ */
 async function submitDocument() {
 	if (!activeUser.value || !selectedFile.value || !documentTitle.value.trim()) return
 	savingDocument.value = true
@@ -187,6 +208,7 @@ async function submitDocument() {
 				? response.reason || '文档没有变化。'
 				: `文档已保存为 v${response.document.version}`
 		await loadDocuments()
+		// 新建或更新成功后短暂展示版本号，再关闭弹窗。
 		if (response.status !== 'skipped') {
 			setTimeout(() => (showDocumentModal.value = false), 700)
 		}
@@ -197,10 +219,12 @@ async function submitDocument() {
 	}
 }
 
+/** 把未知异常转换成页面可以直接展示的错误文本。 */
 function setError(reason: unknown) {
 	error.value = reason instanceof Error ? reason.message : String(reason)
 }
 
+/** 把时间戳格式化成文档列表使用的月日和时间。 */
 function formatDate(timestamp: number) {
 	return new Intl.DateTimeFormat('zh-CN', {
 		month: '2-digit',

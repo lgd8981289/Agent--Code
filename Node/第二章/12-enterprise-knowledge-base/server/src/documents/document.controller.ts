@@ -23,11 +23,13 @@ import { DocumentService } from './document.service.js'
 export class DocumentController {
 	constructor(private readonly documents: DocumentService) {}
 
+	/** 返回当前身份能够访问的生效文档。 */
 	@Get()
 	list(@CurrentUser() user: DemoUser) {
 		return this.documents.listDocuments(user)
 	}
 
+	/** 返回指定文档的全部版本，供管理员审计和核对更新结果。 */
 	@Get(':documentId/versions')
 	@UseGuards(AdminGuard)
 	versions(
@@ -37,6 +39,7 @@ export class DocumentController {
 		return this.documents.listVersions(user, documentId)
 	}
 
+	/** 接收 Markdown 文件并创建一份新的知识文档。 */
 	@Post()
 	@UseGuards(AdminGuard)
 	@UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2_000_000 } }))
@@ -53,6 +56,7 @@ export class DocumentController {
 		})
 	}
 
+	/** 接收 Markdown 文件并为已有文档发布新版本。 */
 	@Put(':documentId')
 	@UseGuards(AdminGuard)
 	@UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2_000_000 } }))
@@ -70,6 +74,9 @@ export class DocumentController {
 		})
 	}
 
+	/**
+	 * 校验上传文件是否存在，并限制当前案例只处理 Markdown。
+	 */
 	private assertMarkdown(
 		file?: Express.Multer.File
 	): asserts file is Express.Multer.File {

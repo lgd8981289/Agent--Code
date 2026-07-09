@@ -36,6 +36,10 @@ const samples = [
 	}
 ]
 
+/**
+ * 导入项目预置的跨租户、跨部门样例文档。
+ * 已存在的同名文档会进入更新流程，相同内容则由 checksum 自动跳过。
+ */
 async function main() {
 	const app = await NestFactory.createApplicationContext(AppModule, {
 		logger: ['error', 'warn']
@@ -50,6 +54,7 @@ async function main() {
 			if (!user) throw new Error(`没有找到演示用户：${sample.token}`)
 
 			const content = await readFile(path.join(sampleRoot, sample.fileName))
+			// 使用对应租户管理员查询文档，避免跨租户判断同名数据。
 			const existing = (await documents.listDocuments(user)).find(
 				(document) => document.title === sample.title
 			)

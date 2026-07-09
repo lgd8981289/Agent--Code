@@ -10,8 +10,14 @@ export class KnowledgeService {
 		private readonly milvus: MilvusService
 	) {}
 
+	/**
+	 * 执行一次完整的企业知识库问答。
+	 * 流程包括问题向量化、权限内混合检索、Rerank、答案生成和来源绑定。
+	 */
 	async query(user: DemoUser, question: string) {
 		const startedAt = performance.now()
+
+		// 用户问题的向量用于 Dense 路线，原始文本同时用于 BM25 路线。
 		const [queryVector] = await this.ai.createEmbeddings([question])
 		const retrieval = await this.milvus.hybridSearch(
 			user,
@@ -20,6 +26,8 @@ export class KnowledgeService {
 		)
 		const reranked = await this.ai.rerank(question, retrieval.chunks, 4)
 		const groundedAnswer = await this.ai.generateAnswer(question, reranked)
+
+		// 模型只返回 Chunk ID，最终来源信息必须从系统候选集重新绑定。
 		const chunkById = new Map(
 			reranked.map((chunk) => [chunk.chunkId, chunk])
 		)
@@ -43,6 +51,7 @@ export class KnowledgeService {
 			answer: groundedAnswer.answer,
 			sources,
 			pipeline: {
+				// 检索信息返回给演示前端，方便观察权限和精排是否生效。
 				permissionFilter: retrieval.filter,
 				recalledCount: retrieval.chunks.length,
 				rerankedCount: reranked.length,

@@ -37,11 +37,18 @@ export class DocumentService {
 			path.resolve(process.cwd(), '../storage/documents')
 	}
 
+	/**
+	 * 查询当前用户有权访问的生效文档，并合并同一文档的 Chunk 信息。
+	 */
 	async listDocuments(user: DemoUser): Promise<DocumentSummary[]> {
 		const rows = await this.milvus.query(buildPermissionFilter(user))
 		return this.summarize(rows)
 	}
 
+	/**
+	 * 查询一份文档的全部历史版本。
+	 * 历史版本只允许管理员查看，因此这里不使用普通员工的权限 Filter。
+	 */
 	async listVersions(
 		user: DemoUser,
 		documentId: string
@@ -51,6 +58,7 @@ export class DocumentService {
 		)
 		if (rows.length === 0) throw new NotFoundException('没有找到这个文档。')
 
+		// 一个版本可能包含多个 Chunk，需要先按版本号重新分组。
 		const versions = new Map<number, Record<string, unknown>[]>()
 		for (const row of rows) {
 			const version = Number(row.version)
@@ -68,10 +76,16 @@ export class DocumentService {
 			.sort((first, second) => second.version - first.version)
 	}
 
+	/**
+	 * 创建新文档，并为它分配不会与其他文档冲突的 ID。
+	 */
 	async createDocument(user: DemoUser, input: SaveDocumentInput) {
 		return this.saveVersion(user, randomUUID(), input, false)
 	}
 
+	/**
+	 * 为已有文档发布新版本。
+	 */
 	async updateDocument(
 		user: DemoUser,
 		documentId: string,
@@ -80,6 +94,10 @@ export class DocumentService {
 		return this.saveVersion(user, documentId, input, true)
 	}
 
+	/**
+	 * 完成文档版本入库的主流程。
+	 * 包括内容校验、重复检测、分块向量化，以及新旧版本状态切换。
+	 */
 	private async saveVersion(
 		user: DemoUser,
 		documentId: string,
@@ -87,6 +105,7 @@ export class DocumentService {
 		mustExist: boolean
 	) {
 		return this.withLock(`${user.tenantId}:${documentId}`, async () => {
+			// 先统一换行格式，避免相同内容因为操作系统不同而产生不同 checksum。
 			const markdown = normalizeMarkdown(input.content.toString('utf8'))
 			if (!markdown) throw new BadRequestException('Markdown 文档不能为空。')
 
@@ -95,6 +114,7 @@ export class DocumentService {
 				throw new BadRequestException('文档中没有可以入库的正文。')
 			}
 
+			// 同时读取生效版本和历史版本，用于重复判断与新版本号计算。
 			const history = await this.milvus.query(
 				buildDocumentFilter(user.tenantId, documentId)
 			)
@@ -106,6 +126,7 @@ export class DocumentService {
 
 			const checksum = this.hash(markdown)
 			const active = activeRows[0]
+			// 内容或权限发生变化都需要发布新版本，防止旧权限继续生效。
 			const unchanged =
 				active &&
 				String(active.checksum) === checksum &&
@@ -128,6 +149,7 @@ export class DocumentService {
 				documentId,
 				`v${version}.md`
 			)
+			// Embedding 返回顺序必须与 chunks 保持一致，后面会按下标组装数据行。
 			const vectors = await this.ai.createEmbeddings(
 				chunks.map((chunk) => chunk.content)
 			)
@@ -142,6 +164,7 @@ export class DocumentService {
 				vectors
 			})
 
+			// 原文用于审计和回溯，Milvus 中保存的是 Chunk、向量和检索元数据。
 			await this.writeSource(sourcePath, markdown)
 			await this.milvus.insertChunks(rows)
 
@@ -154,10 +177,12 @@ export class DocumentService {
 				tenantId: row.tenant_id
 			}))
 
+			// 新 Chunk 已完整写入后再切换版本，避免入库失败时破坏当前知识库。
 			if (previous.length > 0) await this.milvus.setActive(previous, false)
 			try {
 				await this.milvus.setActive(next, true)
 			} catch (error) {
+				// 新版本激活失败时恢复旧版本，尽量保持线上仍有可用知识。
 				if (previous.length > 0) await this.milvus.setActive(previous, true)
 				throw error
 			}
@@ -169,6 +194,10 @@ export class DocumentService {
 		})
 	}
 
+	/**
+	 * 把文档 Chunk、向量和 Metadata 组装成 Milvus 写入数据。
+	 * 新数据默认不生效，待全部写入成功后再统一激活。
+	 */
 	private createRows(options: {
 		user: DemoUser
 		documentId: string
@@ -198,6 +227,9 @@ export class DocumentService {
 		}))
 	}
 
+	/**
+	 * 把 Chunk 行合并成文档摘要，供列表和版本接口展示。
+	 */
 	private summarize(rows: Record<string, unknown>[]): DocumentSummary[] {
 		const documents = new Map<string, Record<string, unknown>[]>()
 		for (const row of rows) {
@@ -225,16 +257,26 @@ export class DocumentService {
 			.sort((first, second) => second.updatedAt - first.updatedAt)
 	}
 
+	/**
+	 * 按租户、文档和版本目录保存原始 Markdown 文件。
+	 */
 	private async writeSource(relativePath: string, markdown: string) {
 		const fullPath = path.join(this.storageRoot, ...relativePath.split('/'))
 		await mkdir(path.dirname(fullPath), { recursive: true })
 		await writeFile(fullPath, markdown, 'utf8')
 	}
 
+	/**
+	 * 生成稳定的 SHA-256，用于内容去重和 Chunk ID 构造。
+	 */
 	private hash(text: string): string {
 		return createHash('sha256').update(text).digest('hex')
 	}
 
+	/**
+	 * 对同一租户下的同一文档串行执行更新任务。
+	 * 这是单进程锁，多实例部署时应替换为任务队列或分布式锁。
+	 */
 	private async withLock<T>(key: string, task: () => Promise<T>): Promise<T> {
 		while (this.locks.has(key)) await this.locks.get(key)
 

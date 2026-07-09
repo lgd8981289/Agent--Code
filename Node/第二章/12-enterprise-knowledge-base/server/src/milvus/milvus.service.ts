@@ -214,7 +214,10 @@ export class MilvusService implements OnModuleInit, OnApplicationShutdown {
 	 * 根据 Metadata Filter 查询 Chunk 数据。
 	 * 主要用于文档列表、版本历史和更新前检查。
 	 */
-	async query(filter: string, limit = 5000): Promise<Record<string, unknown>[]> {
+	async query(
+		filter: string,
+		limit = 5000
+	): Promise<Record<string, unknown>[]> {
 		const result = await this.client.query({
 			collection_name: this.collectionName,
 			filter,

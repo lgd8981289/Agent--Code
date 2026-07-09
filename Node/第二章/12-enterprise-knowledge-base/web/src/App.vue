@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import {
 	BookOpenText,
 	Bot,
@@ -20,11 +20,13 @@ import {
 	SendHorizontal,
 	ShieldCheck,
 	Sparkles,
+	Trash2,
 	Upload,
 	Users,
 	X
 } from '@lucide/vue'
 import {
+	deleteDocument,
 	getDocuments,
 	getHealth,
 	getUsers,
@@ -35,6 +37,17 @@ import type { DemoUser, DocumentSummary, QueryResult } from './types'
 
 type DocumentFilter = 'all' | 'company' | 'department'
 type MobileView = 'query' | 'documents'
+type ConversationTurnStatus = 'pending' | 'answered' | 'error'
+
+interface ConversationTurn {
+	id: string
+	question: string
+	userName: string
+	createdAt: number
+	status: ConversationTurnStatus
+	result?: QueryResult
+	error?: string
+}
 
 const users = ref<DemoUser[]>([])
 const activeToken = ref('')
@@ -42,16 +55,17 @@ const documents = ref<DocumentSummary[]>([])
 const serverOnline = ref(false)
 const loadingDocuments = ref(false)
 const question = ref('3000 元退款需要人工审核吗？')
-const lastQuestion = ref('')
 const asking = ref(false)
-const result = ref<QueryResult | null>(null)
 const error = ref('')
 const documentSearch = ref('')
 const documentFilter = ref<DocumentFilter>('all')
 const mobileView = ref<MobileView>('query')
+const conversationTurns = ref<ConversationTurn[]>([])
+const conversationRef = ref<HTMLElement | null>(null)
 
 const showDocumentModal = ref(false)
 const savingDocument = ref(false)
+const deletingDocumentId = ref('')
 const editingDocument = ref<DocumentSummary | null>(null)
 const documentTitle = ref('')
 const departmentId = ref('customer-service')
@@ -97,6 +111,7 @@ onMounted(async () => {
 		const [userList] = await Promise.all([getUsers(), checkHealth()])
 		users.value = userList
 		activeToken.value = userList[0]?.token ?? ''
+		restoreConversationHistory()
 		await loadDocuments()
 	} catch (reason) {
 		setError(reason)
@@ -113,13 +128,13 @@ async function checkHealth() {
 }
 
 /**
- * 切换演示身份后清空上一轮回答，并重新请求该身份的文档列表。
+ * 切换演示身份后加载对应身份的历史问答，并重新请求可访问文档。
  */
 async function changeUser() {
-	result.value = null
-	lastQuestion.value = ''
 	error.value = ''
+	restoreConversationHistory()
 	await loadDocuments()
+	await scrollConversationToBottom()
 }
 
 /** 加载当前身份有权访问的生效文档。 */
@@ -142,20 +157,34 @@ async function loadDocuments() {
  */
 async function ask(prefilledQuestion?: string) {
 	const submittedQuestion = (prefilledQuestion ?? question.value).trim()
-	if (!submittedQuestion || !activeToken.value) return
+	if (!submittedQuestion || !activeToken.value || asking.value) return
 
-	// lastQuestion 独立保存本轮问题，避免输入框变化影响已经展示的消息。
-	question.value = submittedQuestion
-	lastQuestion.value = submittedQuestion
+	const turn: ConversationTurn = {
+		id: createTurnId(),
+		question: submittedQuestion,
+		userName: activeUser.value?.name ?? '用户',
+		createdAt: Date.now(),
+		status: 'pending'
+	}
+
+	conversationTurns.value.push(turn)
+	question.value = ''
 	asking.value = true
 	error.value = ''
-	result.value = null
+	await scrollConversationToBottom()
+
 	try {
-		result.value = await queryKnowledge(activeToken.value, submittedQuestion)
+		turn.result = await queryKnowledge(activeToken.value, submittedQuestion)
+		turn.status = 'answered'
+		persistConversationHistory()
 	} catch (reason) {
+		turn.status = 'error'
+		turn.error = reason instanceof Error ? reason.message : String(reason)
+		persistConversationHistory()
 		setError(reason)
 	} finally {
 		asking.value = false
+		await scrollConversationToBottom()
 	}
 }
 
@@ -217,6 +246,95 @@ async function submitDocument() {
 	} finally {
 		savingDocument.value = false
 	}
+}
+
+/** 删除文档时只关闭生效 Chunk，历史版本仍然留在 Milvus 里用于审计。 */
+async function deleteExistingDocument(document: DocumentSummary) {
+	if (!activeUser.value || deletingDocumentId.value) return
+	const confirmed = window.confirm(
+		`确定删除「${document.title}」吗？删除后它不会再被正常检索。`
+	)
+	if (!confirmed) return
+
+	deletingDocumentId.value = document.documentId
+	error.value = ''
+	try {
+		await deleteDocument(activeUser.value.token, document.documentId)
+		await loadDocuments()
+	} catch (reason) {
+		setError(reason)
+	} finally {
+		deletingDocumentId.value = ''
+	}
+}
+
+/** 清空当前演示身份在浏览器本地保存的问答历史。 */
+function clearConversationHistory() {
+	conversationTurns.value = []
+	if (activeToken.value) {
+		localStorage.removeItem(getConversationHistoryKey(activeToken.value))
+	}
+}
+
+/** 从 localStorage 恢复当前演示身份的历史问答。 */
+function restoreConversationHistory() {
+	if (!activeToken.value) {
+		conversationTurns.value = []
+		return
+	}
+
+	try {
+		const raw = localStorage.getItem(getConversationHistoryKey(activeToken.value))
+		const parsed = raw ? JSON.parse(raw) : []
+		conversationTurns.value = Array.isArray(parsed)
+			? parsed.filter(isSavedConversationTurn).slice(-30)
+			: []
+	} catch {
+		conversationTurns.value = []
+	}
+}
+
+/** 把已完成的问答记录保存到浏览器本地，避免刷新页面后丢失。 */
+function persistConversationHistory() {
+	if (!activeToken.value) return
+	const completedTurns = conversationTurns.value
+		.filter((turn) => turn.status !== 'pending')
+		.slice(-30)
+	localStorage.setItem(
+		getConversationHistoryKey(activeToken.value),
+		JSON.stringify(completedTurns)
+	)
+}
+
+/** 对话增加后自动滚到底部，让最新问答始终可见。 */
+async function scrollConversationToBottom() {
+	await nextTick()
+	const element = conversationRef.value
+	if (element) element.scrollTop = element.scrollHeight
+}
+
+/** 为当前演示身份生成本地历史记录 Key。 */
+function getConversationHistoryKey(token: string) {
+	return `enterprise-knowledge-history:${token}`
+}
+
+/** 生成浏览器端对话记录 ID。 */
+function createTurnId() {
+	if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+	return `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+/** 只恢复结构完整的历史记录，避免旧缓存破坏页面渲染。 */
+function isSavedConversationTurn(value: unknown): value is ConversationTurn {
+	if (!value || typeof value !== 'object') return false
+	const turn = value as Partial<ConversationTurn>
+	return (
+		typeof turn.id === 'string' &&
+		typeof turn.question === 'string' &&
+		typeof turn.userName === 'string' &&
+		typeof turn.createdAt === 'number' &&
+		(turn.status === 'answered' || turn.status === 'error')
+	)
 }
 
 /** 把未知异常转换成页面可以直接展示的错误文本。 */
@@ -329,7 +447,12 @@ function formatDate(timestamp: number) {
 					<span>暂无匹配文档</span>
 				</div>
 				<div v-else class="document-list">
-					<article v-for="document in filteredDocuments" :key="document.documentId" class="document-row">
+					<article
+						v-for="document in filteredDocuments"
+						:key="document.documentId"
+						class="document-row"
+						:class="{ 'has-actions': isAdmin }"
+					>
 						<div class="document-icon">
 							<Globe2 v-if="document.visibility === 'company'" :size="17" />
 							<LockKeyhole v-else :size="17" />
@@ -343,14 +466,28 @@ function formatDate(timestamp: number) {
 							</div>
 							<time><Clock3 :size="12" />{{ formatDate(document.updatedAt) }}</time>
 						</div>
-						<button
-							v-if="isAdmin"
-							class="icon-button row-action"
-							title="发布新版本"
-							@click="openUpdate(document)"
-						>
-							<Upload :size="15" />
-						</button>
+						<div v-if="isAdmin" class="row-actions">
+							<button
+								class="icon-button row-action"
+								title="发布新版本"
+								@click="openUpdate(document)"
+							>
+								<Upload :size="15" />
+							</button>
+							<button
+								class="icon-button row-action danger"
+								title="删除文档"
+								:disabled="deletingDocumentId === document.documentId"
+								@click="deleteExistingDocument(document)"
+							>
+								<LoaderCircle
+									v-if="deletingDocumentId === document.documentId"
+									:size="15"
+									class="spinning"
+								/>
+								<Trash2 v-else :size="15" />
+							</button>
+						</div>
 					</article>
 				</div>
 			</aside>
@@ -361,31 +498,26 @@ function formatDate(timestamp: number) {
 						<span class="section-kicker">AI RETRIEVAL</span>
 						<h1>知识问答</h1>
 					</div>
-					<div class="pipeline-labels">
-						<span><Layers3 :size="14" />Hybrid Search</span>
-						<span><Sparkles :size="14" />Rerank</span>
-						<span><ShieldCheck :size="14" />{{ activeUser?.role === 'admin' ? '管理员权限' : activeUser?.departmentName }}</span>
+					<div class="query-heading-actions">
+						<div class="pipeline-labels">
+							<span><Layers3 :size="14" />Hybrid Search</span>
+							<span><Sparkles :size="14" />Rerank</span>
+							<span><Clock3 :size="14" />{{ conversationTurns.length }} 条记录</span>
+							<span><ShieldCheck :size="14" />{{ activeUser?.role === 'admin' ? '管理员权限' : activeUser?.departmentName }}</span>
+						</div>
+						<button
+							v-if="conversationTurns.length"
+							class="icon-button"
+							title="清空对话记录"
+							@click="clearConversationHistory"
+						>
+							<Trash2 :size="15" />
+						</button>
 					</div>
 				</div>
 
-				<div class="conversation">
-					<div v-if="asking || lastQuestion" class="user-question">
-						<div class="message-avatar user">{{ activeUser?.name.slice(0, 1) }}</div>
-						<div>
-							<span>{{ activeUser?.name }}</span>
-							<p>{{ lastQuestion }}</p>
-						</div>
-					</div>
-
-					<div v-if="asking" class="assistant-response loading-response">
-						<div class="message-avatar assistant"><Bot :size="17" /></div>
-						<div>
-							<span>知识库助手</span>
-							<p><LoaderCircle :size="16" class="spinning" />正在检索并核对企业知识</p>
-						</div>
-					</div>
-
-					<div v-else-if="!result" class="query-empty">
+				<div ref="conversationRef" class="conversation">
+					<div v-if="conversationTurns.length === 0" class="query-empty">
 						<div class="empty-symbol"><Bot :size="27" /></div>
 						<h2>从企业知识中查找答案</h2>
 						<div class="suggestion-list">
@@ -395,50 +527,82 @@ function formatDate(timestamp: number) {
 						</div>
 					</div>
 
-					<div v-else class="assistant-response result-response">
-						<div class="message-avatar assistant"><Bot :size="17" /></div>
-						<div class="response-content">
-							<div class="message-heading">
-								<div><strong>知识库助手</strong><span>{{ result.pipeline.latencyMs }} ms</span></div>
-								<div class="answer-status" :class="result.status">
-									<CheckCircle2 v-if="result.status === 'answered'" :size="15" />
-									<CircleAlert v-else :size="15" />
-									{{ result.status === 'answered' ? '依据充分' : '依据不足' }}
-								</div>
+					<template v-for="turn in conversationTurns" :key="turn.id">
+						<div class="user-question">
+							<div class="message-avatar user">{{ turn.userName.slice(0, 1) }}</div>
+							<div>
+								<span>{{ turn.userName }} · {{ formatDate(turn.createdAt) }}</span>
+								<p>{{ turn.question }}</p>
 							</div>
-
-							<div class="answer-copy">{{ result.answer }}</div>
-
-							<section v-if="result.sources.length" class="sources-section">
-								<div class="subsection-heading">
-									<strong>引用来源</strong><span>{{ result.sources.length }}</span>
-								</div>
-								<article v-for="source in result.sources" :key="source.chunkId" class="source-row">
-									<div class="source-index">{{ source.chunkIndex + 1 }}</div>
-									<div>
-										<div class="source-title">
-											<strong>{{ source.title }}</strong>
-											<span>v{{ source.version }} · Chunk {{ source.chunkIndex + 1 }}</span>
-										</div>
-										<p>{{ source.content }}</p>
-										<code>{{ source.chunkId }}</code>
-									</div>
-								</article>
-							</section>
-
-							<details class="pipeline-details">
-								<summary>
-									<span><Database :size="14" />检索链路</span>
-									<b>{{ result.pipeline.recalledCount }} 召回 · {{ result.pipeline.rerankedCount }} 精排</b>
-								</summary>
-								<div class="filter-code">{{ result.pipeline.permissionFilter }}</div>
-								<div v-for="candidate in result.pipeline.candidates" :key="candidate.chunkId" class="candidate-row">
-									<div><span>#{{ candidate.rank }}</span><strong>{{ candidate.title }}</strong></div>
-									<b>{{ candidate.rerankScore.toFixed(4) }}</b>
-								</div>
-							</details>
 						</div>
-					</div>
+
+						<div v-if="turn.status === 'pending'" class="assistant-response loading-response">
+							<div class="message-avatar assistant"><Bot :size="17" /></div>
+							<div>
+								<span>知识库助手</span>
+								<p><LoaderCircle :size="16" class="spinning" />正在检索并核对企业知识</p>
+							</div>
+						</div>
+
+						<div v-else-if="turn.status === 'error'" class="assistant-response result-response error-response">
+							<div class="message-avatar assistant"><CircleAlert :size="17" /></div>
+							<div class="response-content">
+								<div class="message-heading">
+									<div><strong>知识库助手</strong><span>调用失败</span></div>
+								</div>
+								<div class="answer-copy">{{ turn.error }}</div>
+							</div>
+						</div>
+
+						<div v-else-if="turn.result" class="assistant-response result-response">
+							<div class="message-avatar assistant"><Bot :size="17" /></div>
+							<div class="response-content">
+								<div class="message-heading">
+									<div><strong>知识库助手</strong><span>{{ turn.result.pipeline.latencyMs }} ms</span></div>
+									<div class="answer-status" :class="turn.result.status">
+										<CheckCircle2 v-if="turn.result.status === 'answered'" :size="15" />
+										<CircleAlert v-else :size="15" />
+										{{ turn.result.status === 'answered' ? '依据充分' : '依据不足' }}
+									</div>
+								</div>
+
+								<div class="answer-copy">{{ turn.result.answer }}</div>
+
+								<section v-if="turn.result.sources.length" class="sources-section">
+									<div class="subsection-heading">
+										<strong>引用来源</strong><span>{{ turn.result.sources.length }}</span>
+									</div>
+									<article v-for="source in turn.result.sources" :key="source.chunkId" class="source-row">
+										<div class="source-index">{{ source.chunkIndex + 1 }}</div>
+										<div>
+											<div class="source-title">
+												<strong>{{ source.title }}</strong>
+												<span>v{{ source.version }} · Chunk {{ source.chunkIndex + 1 }}</span>
+											</div>
+											<p>{{ source.content }}</p>
+											<code>{{ source.chunkId }}</code>
+										</div>
+									</article>
+								</section>
+
+								<details class="pipeline-details">
+									<summary>
+										<span><Database :size="14" />检索链路</span>
+										<b>{{ turn.result.pipeline.recalledCount }} 召回 · {{ turn.result.pipeline.rerankedCount }} 精排</b>
+									</summary>
+									<div class="filter-code">{{ turn.result.pipeline.permissionFilter }}</div>
+									<div
+										v-for="candidate in turn.result.pipeline.candidates"
+										:key="candidate.chunkId"
+										class="candidate-row"
+									>
+										<div><span>#{{ candidate.rank }}</span><strong>{{ candidate.title }}</strong></div>
+										<b>{{ candidate.rerankScore.toFixed(4) }}</b>
+									</div>
+								</details>
+							</div>
+						</div>
+					</template>
 				</div>
 
 				<div class="composer-wrap">

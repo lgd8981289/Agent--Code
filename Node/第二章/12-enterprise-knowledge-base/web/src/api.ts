@@ -78,6 +78,17 @@ export function saveDocument(options: {
 	)
 }
 
+/** 删除已导入文档，后端会把它从正常检索范围中移除。 */
+export function deleteDocument(token: string, documentId: string) {
+	return request<{ status: string; reason?: string; document: DocumentSummary }>(
+		`/api/documents/${documentId}`,
+		{
+			method: 'DELETE',
+			headers: auth(token)
+		}
+	)
+}
+
 /** 提交问题并获取答案、来源和检索链路信息。 */
 export function queryKnowledge(token: string, question: string) {
 	return request<QueryResult>('/api/knowledge/query', {

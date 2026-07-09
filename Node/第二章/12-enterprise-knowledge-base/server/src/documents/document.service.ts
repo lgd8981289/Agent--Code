@@ -9,10 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config'
 import { AiService } from '../ai/ai.service.js'
 import type { DemoUser } from '../auth/auth.types.js'
-import {
-	buildDocumentFilter,
-	buildPermissionFilter
-} from '../milvus/filter.js'
+import { buildDocumentFilter, buildPermissionFilter } from '../milvus/filter.js'
 import { MilvusService } from '../milvus/milvus.service.js'
 import type { KnowledgeChunkRow } from '../milvus/milvus.types.js'
 import type {
@@ -95,8 +92,52 @@ export class DocumentService {
 	}
 
 	/**
-	 * 完成文档版本入库的主流程。
-	 * 包括内容校验、重复检测、分块向量化，以及新旧版本状态切换。
+	 * 删除已导入文档。
+	 * 这里采用软删除：保留历史版本和原始文件，只把生效 Chunk 全部置为不可检索。
+	 */
+	async deleteDocument(user: DemoUser, documentId: string) {
+		return this.withLock(`${user.tenantId}:${documentId}`, async () => {
+			const history = await this.milvus.query(
+				buildDocumentFilter(user.tenantId, documentId)
+			)
+			if (history.length === 0)
+				throw new NotFoundException('没有找到这个文档。')
+
+			const activeRows = history.filter((row) => Boolean(row.is_active))
+			if (activeRows.length === 0) {
+				return {
+					status: 'skipped',
+					reason: '文档已经删除，不需要重复处理。',
+					document: this.summarize(history)[0]
+				}
+			}
+
+			await this.milvus.setActive(
+				activeRows.map((row) => ({
+					chunkId: String(row.chunk_id),
+					tenantId: user.tenantId
+				})),
+				false
+			)
+
+			return {
+				status: 'deleted',
+				document: this.summarize(activeRows)[0]
+			}
+		})
+	}
+
+	/**
+	 * RAG 文档入库主流程：
+	 *
+	 * 流程分为：
+	 * 1 统一文本格式
+	 * 2 切分 Chunk
+	 * 3 判断是否重复入库
+	 * 4 生成 Embedding 向量
+	 * 5 组装 Chunk + Vector + Metadata
+	 * 6 写入 Milvus
+	 * 7 切换新版本 Chunk 为生效状态
 	 */
 	private async saveVersion(
 		user: DemoUser,
@@ -105,16 +146,17 @@ export class DocumentService {
 		mustExist: boolean
 	) {
 		return this.withLock(`${user.tenantId}:${documentId}`, async () => {
-			// 先统一换行格式，避免相同内容因为操作系统不同而产生不同 checksum。
+			// 1. 读取上传的 Markdown，并统一换行、空白等格式，避免相同内容生成不同 checksum。
 			const markdown = normalizeMarkdown(input.content.toString('utf8'))
 			if (!markdown) throw new BadRequestException('Markdown 文档不能为空。')
 
+			// 2. 将 Markdown 按标题、段落等结构切分成多个 Chunk，后续检索的最小单位就是 Chunk。
 			const chunks = chunkMarkdown(markdown)
 			if (chunks.length === 0) {
 				throw new BadRequestException('文档中没有可以入库的正文。')
 			}
 
-			// 同时读取生效版本和历史版本，用于重复判断与新版本号计算。
+			// 3. 查询当前文档已有的 Chunk 记录，用于判断是否重复入库，以及计算新版本号。
 			const history = await this.milvus.query(
 				buildDocumentFilter(user.tenantId, documentId)
 			)
@@ -124,9 +166,11 @@ export class DocumentService {
 				throw new NotFoundException('没有找到需要更新的文档。')
 			}
 
+			// 4. 计算当前 Markdown 的 checksum，用来判断文档内容是否发生变化。
 			const checksum = this.hash(markdown)
 			const active = activeRows[0]
-			// 内容或权限发生变化都需要发布新版本，防止旧权限继续生效。
+
+			// 5. 如果内容、标题、部门、可见范围都没变，就不重复生成 Embedding，直接跳过。
 			const unchanged =
 				active &&
 				String(active.checksum) === checksum &&
@@ -142,6 +186,7 @@ export class DocumentService {
 				}
 			}
 
+			// 6. 生成新的文档版本号，并记录当前版本原始 Markdown 的存储路径。
 			const version =
 				Math.max(0, ...history.map((row) => Number(row.version))) + 1
 			const sourcePath = path.posix.join(
@@ -149,10 +194,15 @@ export class DocumentService {
 				documentId,
 				`v${version}.md`
 			)
-			// Embedding 返回顺序必须与 chunks 保持一致，后面会按下标组装数据行。
+
+			// 7. 为每个 Chunk 生成 Embedding 向量。
+			// 注意：vectors 的顺序必须和 chunks 保持一致，方便后面按下标组装数据。
 			const vectors = await this.ai.createEmbeddings(
 				chunks.map((chunk) => chunk.content)
 			)
+
+			// 8. 组装 Milvus 入库数据：
+			// Chunk 正文 + Embedding 向量 + tenant_id / department_id / visibility / version 等元数据。
 			const rows = this.createRows({
 				user,
 				documentId,
@@ -164,8 +214,10 @@ export class DocumentService {
 				vectors
 			})
 
-			// 原文用于审计和回溯，Milvus 中保存的是 Chunk、向量和检索元数据。
+			// 9. 保存原始 Markdown，方便后续审计、回溯和重新构建索引。
 			await this.writeSource(sourcePath, markdown)
+
+			// 10. 将新版本 Chunk 写入 Milvus。
 			await this.milvus.insertChunks(rows)
 
 			const previous = activeRows.map((row) => ({
@@ -177,12 +229,13 @@ export class DocumentService {
 				tenantId: row.tenant_id
 			}))
 
-			// 新 Chunk 已完整写入后再切换版本，避免入库失败时破坏当前知识库。
+			// 11. 切换 RAG 检索使用的生效版本：
+			// 旧 Chunk 失效，新 Chunk 生效。
 			if (previous.length > 0) await this.milvus.setActive(previous, false)
 			try {
 				await this.milvus.setActive(next, true)
 			} catch (error) {
-				// 新版本激活失败时恢复旧版本，尽量保持线上仍有可用知识。
+				// 如果新版本激活失败，恢复旧版本，避免线上知识库不可用。
 				if (previous.length > 0) await this.milvus.setActive(previous, true)
 				throw error
 			}

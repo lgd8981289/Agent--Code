@@ -18,19 +18,22 @@ export class KnowledgeService {
 		const startedAt = performance.now()
 
 		// 用户问题的向量用于 Dense 路线，原始文本同时用于 BM25 路线。
+		// 用的全部都是 大模型的能力
+		// 第一步：生成问题向量
 		const [queryVector] = await this.ai.createEmbeddings([question])
+		// 第二步：执行 Dense + BM25 混合检索
 		const retrieval = await this.milvus.hybridSearch(
 			user,
 			question,
 			queryVector
 		)
+		// 第三步：对检索结果进行 Rerank 重排
 		const reranked = await this.ai.rerank(question, retrieval.chunks, 4)
+		// 第四步：生成最终答案
 		const groundedAnswer = await this.ai.generateAnswer(question, reranked)
 
 		// 模型只返回 Chunk ID，最终来源信息必须从系统候选集重新绑定。
-		const chunkById = new Map(
-			reranked.map((chunk) => [chunk.chunkId, chunk])
-		)
+		const chunkById = new Map(reranked.map((chunk) => [chunk.chunkId, chunk]))
 		const sources = groundedAnswer.sourceChunkIds.map((chunkId) => {
 			const chunk = chunkById.get(chunkId)
 			if (!chunk) throw new Error(`没有找到模型引用的 Chunk：${chunkId}`)

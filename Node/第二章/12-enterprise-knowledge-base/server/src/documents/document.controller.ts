@@ -2,6 +2,7 @@ import {
 	BadRequestException,
 	Body,
 	Controller,
+	Delete,
 	Get,
 	Param,
 	Post,
@@ -72,6 +73,16 @@ export class DocumentController {
 			fileName: file.originalname,
 			content: file.buffer
 		})
+	}
+
+	/** 软删除指定文档，让它从正常检索范围中移除。 */
+	@Delete(':documentId')
+	@UseGuards(AdminGuard)
+	delete(
+		@CurrentUser() user: DemoUser,
+		@Param('documentId') documentId: string
+	) {
+		return this.documents.deleteDocument(user, documentId)
 	}
 
 	/**

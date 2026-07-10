@@ -1,0 +1,12 @@
+[project]
+name = "agent-course-enterprise-knowledge-base"
+version = "0.1.0"
+description = "Python implementation of the enterprise knowledge base lesson"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.116.0,<1.0.0",
+    "pymilvus==2.6.12",
+    "python-multipart>=0.0.20,<1.0.0",
+    "uvicorn[standard]>=0.35.0,<1.0.0",
+]
+

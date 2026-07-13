@@ -1,0 +1,15 @@
+{
+  "name": "02-native-tool-calling",
+  "version": "1.0.0",
+  "private": true,
+  "description": "使用 DeepSeek 和 Node.js 演示原生 Tool Calling 完整调用链",
+  "scripts": {
+    "demo": "node --env-file=.env demo.js"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}

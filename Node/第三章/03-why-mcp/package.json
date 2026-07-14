@@ -1,0 +1,17 @@
+{
+  "name": "03-why-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "通过最小订单案例理解 MCP Host、Client 和 Server",
+  "scripts": {
+    "demo": "node host.js"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "^4.0.0"
+  }
+}

@@ -1,0 +1,9 @@
+[project]
+name = "agent-course-mcp-server-capabilities"
+version = "0.1.0"
+description = "Python implementation of the MCP server capabilities lesson"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp==1.28.1",
+]
+

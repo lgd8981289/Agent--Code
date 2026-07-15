@@ -1,0 +1,19 @@
+{
+  "name": "04-mcp-server-capabilities",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "通过售后场景理解 MCP Server 的 Tools、Resources 和 Prompts",
+  "scripts": {
+    "server": "node after-sales-mcp-server.js",
+    "verify": "node verify-client.js",
+    "inspector": "npx @modelcontextprotocol/inspector node after-sales-mcp-server.js"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "^4.0.0"
+  }
+}

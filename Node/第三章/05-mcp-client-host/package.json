@@ -1,0 +1,19 @@
+{
+  "name": "05-mcp-client-host",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "使用 MCP Client 与 DeepSeek 实现最小 Host 调用闭环",
+  "scripts": {
+    "discover": "node host.js --discover",
+    "demo": "node --env-file=.env host.js"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "^4.0.0"
+  }
+}
+

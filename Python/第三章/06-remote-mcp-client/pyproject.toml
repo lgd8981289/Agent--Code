@@ -1,0 +1,8 @@
+[project]
+name = "agent-course-remote-mcp-client"
+version = "0.1.0"
+description = "Python implementation of the remote MCP client lesson"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp==1.28.1",
+]

@@ -1,0 +1,17 @@
+{
+  "name": "06-remote-mcp-client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "使用 Streamable HTTP 连接高德地图远程 MCP Server",
+  "scripts": {
+    "demo": "node --env-file=.env remote-mcp-client.js"
+  },
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "zod": "^4.0.0"
+  }
+}

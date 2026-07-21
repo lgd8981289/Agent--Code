@@ -1,0 +1,11 @@
+[project]
+name = "agent-course-mcp-extensions"
+version = "0.1.0"
+description = "Python implementation of the MCP extensions lesson"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp==2.0.0b1",
+]
+
+[tool.uv]
+prerelease = "allow"

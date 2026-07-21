@@ -7,10 +7,13 @@
 		"node": ">=20.19"
 	},
 	"scripts": {
+		"build": "npm run build:app && npm run build:web-host",
 		"build:app": "vite build",
+		"build:web-host": "vite build --config vite.web-host.config.js",
 		"server": "node --env-file-if-exists=.env src/http-server.js",
 		"verify": "node --env-file-if-exists=.env src/verify-client.js",
-		"host": "node --env-file-if-exists=.env src/agent-host.js"
+		"host": "node --env-file-if-exists=.env src/agent-host.js",
+		"web-host": "node --env-file-if-exists=.env src/web-host-server.js"
 	},
 	"dependencies": {
 		"@modelcontextprotocol/client": "2.0.0-beta.4",

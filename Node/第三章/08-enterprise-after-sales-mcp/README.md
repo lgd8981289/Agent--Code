@@ -10,9 +10,14 @@
 
 ```bash
 npm install
-npm run build:app
+npm run build
 npm run server
 ```
+
+`npm run build` 会构建两个页面：
+
+- `build:app`：构建由 MCP Server 以 `ui://` Resource 提供的批量审核 MCP App。
+- `build:web-host`：构建用于连续对话和渲染 MCP App 的本地 Web Host。
 
 新开一个终端运行验证 Client：
 
@@ -21,6 +26,39 @@ npm run verify
 ```
 
 验证流程不需要模型 API Key。
+
+## 运行 MCP Apps Web Host
+
+保持 MCP Server 运行，再打开一个终端：
+
+```bash
+npm run web-host
+```
+
+然后访问：
+
+```text
+http://127.0.0.1:3200
+```
+
+Web Host 提供两种演示方式：
+
+1. 在输入框中连续提问，由 DeepSeek 选择 MCP Tools。
+2. 点击“一键演示 MCP App”，不经过模型，直接运行确定性的批量审核链路。
+
+一键演示会自动切换到蓝鲸科技财务身份，显示 Human-in-the-Loop 确认弹窗，并在对话中渲染批量退款审核报告。
+
+MCP App 会运行在独立的 Sandbox Origin：
+
+```text
+Web Host：http://127.0.0.1:3200
+Sandbox：http://127.0.0.1:3201
+MCP Server：http://127.0.0.1:3100/mcp
+```
+
+Web Host 的 Node 层负责调用 DeepSeek 和 MCP Server，浏览器不会直接获取 `DEEPSEEK_API_KEY`。
+
+> “一键演示 MCP App”不需要 DeepSeek API Key。只有在输入框中进行自然语言对话时，才会调用 DeepSeek。
 
 ## 运行 Agent Host
 
@@ -58,6 +96,8 @@ npm run host -- "订单 A1024 可以退款吗？"
 ```
 
 处理完这个问题后，Host 不会退出，而是继续显示 `用户：`，等待下一轮输入。
+
+命令行 Host 适合观察 Tool Calling 和原始 JSON 结果，但不会渲染 MCP App。如果要演示可视化报告，请使用 `npm run web-host`。
 
 ## 演示身份
 

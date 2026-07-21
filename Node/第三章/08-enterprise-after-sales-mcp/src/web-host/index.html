@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="color-scheme" content="light" />
+		<title>企业售后 Agent 演示</title>
+		<script type="module" src="/main.js"></script>
+	</head>
+	<body>
+		<div class="shell">
+			<aside class="sidebar">
+				<div class="brand">
+					<div class="brand-mark">A</div>
+					<div>
+						<strong>AFTERCARE AI</strong>
+						<span>Enterprise Agent</span>
+					</div>
+				</div>
+
+				<section class="side-section identity-panel">
+					<label for="identity">当前演示身份</label>
+					<select id="identity">
+						<option value="token-blue-service">蓝鲸科技 · 客服小周</option>
+						<option value="token-blue-finance">蓝鲸科技 · 财务小林</option>
+						<option value="token-star-service">星河零售 · 客服小李</option>
+					</select>
+					<div class="connection-row">
+						<span id="connection-dot" class="connection-dot"></span>
+						<span id="connection-text">正在连接 MCP Server……</span>
+					</div>
+				</section>
+
+				<section class="side-section">
+					<p class="side-label">快速演示</p>
+					<button class="prompt-button" data-prompt="订单 A1024 可以退款吗？">
+						<span>01</span>退款资格预审
+					</button>
+					<button class="prompt-button" data-prompt="它现在的物流到哪里了？">
+						<span>02</span>连续对话与物流
+					</button>
+					<button id="app-demo-button" class="prompt-button app-demo-button">
+						<span>03</span>一键演示 MCP App
+					</button>
+				</section>
+
+				<section class="side-section capability-panel">
+					<p class="side-label">当前能力</p>
+					<div><span>Tools</span><strong id="tool-count">--</strong></div>
+					<div><span>Model</span><strong id="model-name">--</strong></div>
+					<div><span>Transport</span><strong>Streamable HTTP</strong></div>
+				</section>
+			</aside>
+
+			<main class="workspace">
+				<header class="topbar">
+					<div>
+						<p class="eyebrow">MCP APPS LIVE DEMO</p>
+						<h1>企业售后 Agent</h1>
+					</div>
+					<button id="reset-button" class="ghost-button">新建对话</button>
+				</header>
+
+				<section id="timeline" class="timeline" aria-live="polite">
+					<div class="welcome-card">
+						<div class="welcome-icon">AI</div>
+						<div>
+							<h2>你好，我是企业售后 Agent</h2>
+							<p>可以查订单、查物流、预审退款，财务身份还可以生成可视化的批量审核报告。</p>
+						</div>
+					</div>
+				</section>
+
+				<footer class="composer-shell">
+					<form id="chat-form" class="composer">
+						<textarea id="question" rows="1" placeholder="输入你的售后问题……" aria-label="售后问题"></textarea>
+						<button id="send-button" type="submit">
+							<span>发送</span>
+							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12 20 4l-5 16-3-7-8-1Zm8 1 3-5-7 4 4 1Z" /></svg>
+						</button>
+					</form>
+					<p>重要写操作会在执行前请求人工确认</p>
+				</footer>
+			</main>
+		</div>
+
+		<div id="confirm-modal" class="modal" hidden>
+			<div class="modal-backdrop"></div>
+			<section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+				<div class="modal-icon">!</div>
+				<p class="eyebrow">HUMAN IN THE LOOP</p>
+				<h2 id="confirm-title">需要你确认这次操作</h2>
+				<p id="confirm-message"></p>
+				<div class="modal-actions">
+					<button id="decline-button" class="ghost-button">取消操作</button>
+					<button id="accept-button" class="primary-button">确认执行</button>
+				</div>
+			</section>
+		</div>
+	</body>
+</html>

@@ -1,3 +1,14 @@
+/**
+ * 文件作用：
+ * 注册企业售后 MCP Server 的 Tools、Resources、Prompts 和 MCP App，
+ * 并根据登录角色决定当前身份能够发现哪些能力。
+ *
+ * 章节定位：【本章重点】
+ *
+ * 建议阅读：
+ * 这是本节最核心的文件。重点理解能力注册、角色权限、
+ * Human-in-the-Loop、requestState、业务长任务和 MCP App Resource。
+ */
 import {
 	RESOURCE_MIME_TYPE,
 	registerAppResource,
@@ -41,6 +52,8 @@ const confirmationResponseSchema = z.object({
 	confirm: z.boolean()
 })
 
+// ==================== MCP Tool 统一返回结构 ====================
+
 function jsonResult(data, isError = false) {
 	return {
 		isError,
@@ -59,6 +72,8 @@ function cancelledResult(message) {
 		true
 	)
 }
+
+// ==================== 客服与财务共有能力 ====================
 
 /**
  * 注册所有客服和财务都能使用的基础能力。
@@ -113,6 +128,8 @@ function registerCommonCapabilities(server, principal) {
 		async ({ orderId, reason }) =>
 			businessResult(previewRefund(principal, orderId, reason))
 	)
+
+	// ==================== Human-in-the-Loop 退款提交 ====================
 
 	server.registerTool(
 		'submit_refund_request',
@@ -199,6 +216,8 @@ function registerCommonCapabilities(server, principal) {
 		}
 	)
 
+	// ==================== 售后 Resource 与 Prompt ====================
+
 	server.registerResource(
 		'refund-policy',
 		'after-sales://policies/refund-policy',
@@ -250,8 +269,10 @@ function registerCommonCapabilities(server, principal) {
 					}
 				}
 			]
-		}))
+	}))
 }
+
+// ==================== 财务角色专属能力 ====================
 
 /** 财务角色额外拥有批量审核、取消、审计和报告 App。 */
 function registerFinanceCapabilities(server, principal, appHtml) {
@@ -355,6 +376,8 @@ function registerFinanceCapabilities(server, principal, appHtml) {
 		})
 	)
 
+	// ==================== 批量审核 MCP App ====================
+
 	registerAppTool(
 		server,
 		'get_batch_review_report',
@@ -385,6 +408,8 @@ function registerFinanceCapabilities(server, principal, appHtml) {
 		})
 	)
 }
+
+// ==================== MCP Server 工厂 ====================
 
 /**
  * 每个 HTTP 请求都会创建新的 MCP Server，但共享外部业务服务中的状态。

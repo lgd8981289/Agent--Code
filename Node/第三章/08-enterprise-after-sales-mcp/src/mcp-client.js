@@ -1,3 +1,14 @@
+/**
+ * 文件作用：
+ * 创建企业售后 MCP Client，配置现代协议协商、Elicitation、
+ * MCP Apps 能力声明和 Bearer Token 认证。
+ *
+ * 章节定位：【本章重点】
+ *
+ * 建议阅读：
+ * 重点理解 Client capabilities、Streamable HTTP Transport、
+ * MCP_TOKEN 的发送位置和 Human-in-the-Loop 响应方式。
+ */
 import {
 	Client,
 	StreamableHTTPClientTransport

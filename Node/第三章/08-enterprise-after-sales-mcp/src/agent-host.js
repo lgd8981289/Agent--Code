@@ -1,3 +1,14 @@
+/**
+ * 文件作用：
+ * 实现命令行 Agent Host，负责调用 DeepSeek、执行 MCP Tools、
+ * 保存消息历史并支持连续对话和人工确认。
+ *
+ * 章节定位：【本章重点】
+ *
+ * 建议阅读：
+ * 重点理解一轮 Tool Calling 循环、Tool Result 如何写回 messages，
+ * 以及为什么同一个 messages 数组能够支持连续对话。
+ */
 import { resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { pathToFileURL } from 'node:url'
@@ -7,6 +18,8 @@ import { createAfterSalesClient } from './mcp-client.js'
 
 const initialQuestion = process.argv.slice(2).join(' ').trim()
 const exitCommands = new Set(['/exit', '/quit', '退出'])
+
+// ==================== 对话历史初始化 ====================
 
 /** 创建一段新的售后 Agent 对话历史。 */
 export function createConversationMessages() {
@@ -21,6 +34,8 @@ export function createConversationMessages() {
 		}
 	]
 }
+
+// ==================== 单轮 Agent 与 Tool Calling 循环 ====================
 
 /**
  * 处理一轮用户对话。
@@ -69,6 +84,8 @@ export async function runAgentTurn({
 	}
 }
 
+// ==================== 连续对话循环 ====================
+
 /**
  * 持续读取用户输入，直到用户主动退出。
  *
@@ -108,6 +125,8 @@ export async function runConversation({
 		})
 	}
 }
+
+// ==================== Host 启动入口 ====================
 
 /** 启动连续对话 Host。 */
 export async function main() {

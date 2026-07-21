@@ -1,3 +1,14 @@
+/**
+ * 文件作用：
+ * 启动企业售后 MCP HTTP Server，加载 MCP App 构建产物，
+ * 完成 Bearer Token 鉴权并把请求交给 Streamable HTTP Handler。
+ *
+ * 章节定位：【本章重点】
+ *
+ * 建议阅读：
+ * 重点理解 HTTP 鉴权发生在 MCP Handler 之前、身份如何传入 Server
+ * 工厂，以及为什么每个请求都可以创建新的 MCP Server 实例。
+ */
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 

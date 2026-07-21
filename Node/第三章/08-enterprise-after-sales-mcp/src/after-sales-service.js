@@ -1,6 +1,19 @@
+/**
+ * 文件作用：
+ * 提供企业售后业务逻辑，包括租户隔离查询、退款规则、幂等提交、
+ * 批量审核长任务和审计记录。
+ *
+ * 章节定位：【本章重点】
+ *
+ * 建议阅读：
+ * 重点理解 tenantId 如何限制数据范围、业务状态为什么独立于 MCP Server
+ * 实例，以及退款幂等和长任务状态是如何实现的。
+ */
 import { randomUUID } from 'node:crypto'
 
 import { logistics, orders, policies } from './data.js'
+
+// ==================== 跨请求共享的业务状态 ====================
 
 /**
  * 业务状态必须放在 MCP Server 实例之外。
@@ -27,6 +40,8 @@ function appendAudit(principal, action, targetId, detail = {}) {
 		createdAt: new Date().toISOString()
 	})
 }
+
+// ==================== 多租户只读查询 ====================
 
 /** 根据当前登录人的 tenantId 查询订单，调用方不能自行指定租户。 */
 export function getOrder(principal, orderId) {
@@ -77,6 +92,8 @@ export function searchPolicies(principal, query) {
 
 	return { ok: true, results }
 }
+
+// ==================== 退款规则与幂等提交 ====================
 
 /** 退款资格由确定性业务规则判断，而不是交给模型猜。 */
 export function previewRefund(principal, orderId, reason) {
@@ -157,6 +174,8 @@ export function getRefundByIdempotencyKey(principal, idempotencyKey) {
 
 	return refundRequest ? { ...refundRequest } : null
 }
+
+// ==================== 批量审核长任务 ====================
 
 export function startBatchReview(principal, orderIds) {
 	if (principal.role !== 'finance') {

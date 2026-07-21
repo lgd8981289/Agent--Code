@@ -1,3 +1,14 @@
+/**
+ * 文件作用：
+ * 不经过大模型，直接验证角色权限、租户隔离、Tools、Resources、
+ * Prompts、Human-in-the-Loop、幂等、长任务和 MCP App。
+ *
+ * 章节定位：【配套文件】
+ *
+ * 建议阅读：
+ * 建议运行并观察每组断言，理解如何把 MCP Server 的协议行为和
+ * 业务行为变成可重复验证的测试流程。
+ */
 import { createAfterSalesClient, parseToolResult } from './mcp-client.js'
 
 function title(text) {

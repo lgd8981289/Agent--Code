@@ -1,3 +1,14 @@
+/**
+ * 文件作用：
+ * 启动浏览器版 Web Host 和独立 Sandbox 服务，代理 DeepSeek 与 MCP
+ * 请求，并为 MCP App 提供受控的跨 Origin 渲染环境。
+ *
+ * 章节定位：【本章重点】
+ *
+ * 建议阅读：
+ * 重点理解浏览器为什么不直接持有模型密钥、Elicitation 如何转交页面，
+ * 以及 Web Host 与 Sandbox 为什么运行在不同 Origin。
+ */
 import { readFile, stat } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { extname, resolve, sep } from 'node:path'
@@ -17,6 +28,8 @@ class ElicitationNeeded extends Error {
 		this.name = 'ElicitationNeeded'
 	}
 }
+
+// ==================== Web Host HTTP 基础能力 ====================
 
 const mimeTypes = {
 	'.css': 'text/css; charset=utf-8',
@@ -77,6 +90,8 @@ async function sendFile(response, pathname, extraHeaders = {}) {
 	}
 }
 
+// ==================== MCP App Sandbox 安全策略 ====================
+
 function sanitizeCspDomains(domains) {
 	if (!Array.isArray(domains)) return []
 	return domains.filter(
@@ -107,6 +122,8 @@ function buildSandboxCsp(csp = {}) {
 	].join('; ')
 }
 
+// ==================== Node 层 MCP Client 代理 ====================
+
 async function withMcpClient(token, decision, action) {
 	const client = await createAfterSalesClient({
 		token,
@@ -128,6 +145,8 @@ async function withMcpClient(token, decision, action) {
 		await client.close()
 	}
 }
+
+// ==================== 浏览器 Web Host 服务 ====================
 
 const hostServer = createServer(async (request, response) => {
 	const url = new URL(request.url ?? '/', `http://${request.headers.host}`)
@@ -219,6 +238,8 @@ const hostServer = createServer(async (request, response) => {
 	response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' })
 	response.end('Not Found')
 })
+
+// ==================== 独立 Origin Sandbox 服务 ====================
 
 const sandboxServer = createServer(async (request, response) => {
 	const url = new URL(request.url ?? '/', `http://${request.headers.host}`)

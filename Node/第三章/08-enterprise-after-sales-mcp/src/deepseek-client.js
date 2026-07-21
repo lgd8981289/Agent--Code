@@ -1,3 +1,15 @@
+/**
+ * 文件作用：
+ * 调用兼容 OpenAI Chat Completions 结构的 DeepSeek API，
+ * 向模型传递对话历史和 MCP Tools。
+ *
+ * 章节定位：【配套文件】
+ *
+ * 建议阅读：
+ * 了解 DEEPSEEK_API_KEY 只用于模型 API 鉴权，并与 MCP Server
+ * 使用的业务 Token 相互独立即可。
+ */
+
 const apiUrl =
 	process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com/chat/completions'
 

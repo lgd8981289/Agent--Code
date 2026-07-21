@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>批量退款审核报告</title>
+		<script type="module" src="/main.js"></script>
+	</head>
+	<body>
+		<main class="report-shell">
+			<header class="report-header">
+				<div>
+					<p class="eyebrow">AFTER-SALES CONTROL</p>
+					<h1>批量退款审核报告</h1>
+				</div>
+				<span id="status" class="status">等待数据</span>
+			</header>
+
+			<section id="summary" class="summary" aria-label="审核统计">
+				<div><span>订单总数</span><strong>--</strong></div>
+				<div><span>自动通过</span><strong>--</strong></div>
+				<div><span>人工审核</span><strong>--</strong></div>
+				<div><span>拒绝退款</span><strong>--</strong></div>
+			</section>
+
+			<section class="table-section">
+				<div class="section-heading">
+					<h2>订单明细</h2>
+					<span id="job-id">尚未收到任务</span>
+				</div>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr><th>订单号</th><th>审核结果</th><th>处理方式</th><th>判断依据</th></tr>
+						</thead>
+						<tbody id="rows">
+							<tr><td colspan="4" class="empty">Host 调用报告 Tool 后，结果会显示在这里。</td></tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+		</main>
+	</body>
+</html>

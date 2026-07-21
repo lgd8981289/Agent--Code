@@ -1,0 +1,27 @@
+{
+	"name": "08-enterprise-after-sales-mcp",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=20.19"
+	},
+	"scripts": {
+		"build:app": "vite build",
+		"server": "node --env-file-if-exists=.env src/http-server.js",
+		"verify": "node --env-file-if-exists=.env src/verify-client.js",
+		"host": "node --env-file-if-exists=.env src/agent-host.js"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/client": "2.0.0-beta.4",
+		"@modelcontextprotocol/ext-apps": "1.7.4",
+		"@modelcontextprotocol/node": "2.0.0-beta.4",
+		"@modelcontextprotocol/sdk": "1.29.0",
+		"@modelcontextprotocol/server": "2.0.0-beta.4",
+		"zod": "4.4.3"
+	},
+	"devDependencies": {
+		"vite": "7.3.6",
+		"vite-plugin-singlefile": "2.3.0"
+	}
+}

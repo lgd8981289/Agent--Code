@@ -1,0 +1,93 @@
+:root {
+	font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+	color: #17202a;
+	background: #f5f7f9;
+	font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 320px; }
+
+.report-shell {
+	width: min(100%, 1080px);
+	margin: 0 auto;
+	padding: 28px;
+}
+
+.report-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20px;
+	padding-bottom: 22px;
+	border-bottom: 1px solid #d9e0e7;
+}
+
+.eyebrow {
+	margin: 0 0 8px;
+	color: #637080;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0;
+}
+
+h1 { margin: 0; font-size: 28px; line-height: 1.25; }
+h2 { margin: 0; font-size: 17px; }
+
+.status,
+.result {
+	display: inline-flex;
+	align-items: center;
+	white-space: nowrap;
+	border-radius: 4px;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+.status { padding: 7px 10px; color: #5d6876; background: #e8edf1; }
+.status.completed { color: #0a6b44; background: #dff4e9; }
+
+.summary {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 1px;
+	margin: 22px 0;
+	border: 1px solid #d9e0e7;
+	background: #d9e0e7;
+}
+
+.summary div { padding: 18px; background: #fff; }
+.summary span { display: block; color: #657282; font-size: 13px; }
+.summary strong { display: block; margin-top: 7px; font-size: 26px; }
+
+.table-section { border: 1px solid #d9e0e7; background: #fff; }
+
+.section-heading {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 16px 18px;
+	border-bottom: 1px solid #e4e9ee;
+}
+
+.section-heading span { color: #728090; font-family: monospace; font-size: 12px; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 14px 16px; border-bottom: 1px solid #edf0f3; text-align: left; font-size: 13px; }
+th { color: #687687; background: #fafbfc; font-weight: 600; }
+tbody tr:last-child td { border-bottom: 0; }
+.result { padding: 4px 7px; }
+.result.success { color: #086a43; background: #dff4e9; }
+.result.warning { color: #945b00; background: #fff0cc; }
+.result.danger { color: #a02929; background: #fde5e5; }
+.empty { height: 120px; color: #7a8795; text-align: center; }
+
+@media (max-width: 680px) {
+	.report-shell { padding: 18px 14px; }
+	.report-header { align-items: stretch; flex-direction: column; }
+	.status { align-self: flex-start; }
+	.summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.section-heading { align-items: flex-start; flex-direction: column; }
+}

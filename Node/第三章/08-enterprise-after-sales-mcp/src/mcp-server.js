@@ -39,11 +39,17 @@ import {
 
 const APP_URI = 'ui://after-sales/batch-review-report.html'
 
+// 创建 requestState 编解码器，用于生成和校验多轮请求状态。
 const requestStateCodec = createRequestStateCodec({
+	// 用于对 requestState 进行签名，生产环境必须配置安全的独立密钥。
 	key:
 		process.env.REQUEST_STATE_SECRET ??
 		'course-demo-request-state-secret-2026-change-me',
+
+	// requestState 的有效期为 5 分钟。
 	ttlSeconds: 300,
+
+	// 将状态绑定到请求方法和当前客户端，防止被其他请求或客户端复用。
 	bind: (context) =>
 		`${context.mcpReq.method}\0${context.http?.authInfo?.clientId ?? 'anonymous'}`
 })
@@ -79,6 +85,8 @@ function cancelledResult(message) {
  * 注册所有客服和财务都能使用的基础能力。
  */
 function registerCommonCapabilities(server, principal) {
+	// ==================== 只读售后 Tools ====================
+
 	server.registerTool(
 		'get_order_detail',
 		{
@@ -87,7 +95,10 @@ function registerCommonCapabilities(server, principal) {
 			inputSchema: z.object({
 				orderId: z.string().describe('订单号，例如 A1024')
 			}),
-			annotations: { readOnlyHint: true, idempotentHint: true }
+			annotations: {
+				readOnlyHint: true,
+				idempotentHint: true
+			}
 		},
 		async ({ orderId }) => businessResult(getOrder(principal, orderId))
 	)
@@ -97,8 +108,13 @@ function registerCommonCapabilities(server, principal) {
 		{
 			title: '查询物流轨迹',
 			description: '根据订单号查询当前企业的物流轨迹',
-			inputSchema: z.object({ orderId: z.string() }),
-			annotations: { readOnlyHint: true, idempotentHint: true }
+			inputSchema: z.object({
+				orderId: z.string()
+			}),
+			annotations: {
+				readOnlyHint: true,
+				idempotentHint: true
+			}
 		},
 		async ({ orderId }) => businessResult(getLogistics(principal, orderId))
 	)
@@ -108,8 +124,13 @@ function registerCommonCapabilities(server, principal) {
 		{
 			title: '检索售后规则',
 			description: '根据用户问题检索当前企业的售后规则',
-			inputSchema: z.object({ query: z.string().min(1) }),
-			annotations: { readOnlyHint: true, idempotentHint: true }
+			inputSchema: z.object({
+				query: z.string().min(1)
+			}),
+			annotations: {
+				readOnlyHint: true,
+				idempotentHint: true
+			}
 		},
 		async ({ query }) => businessResult(searchPolicies(principal, query))
 	)
@@ -123,7 +144,12 @@ function registerCommonCapabilities(server, principal) {
 				orderId: z.string(),
 				reason: z.string().min(2)
 			}),
-			annotations: { readOnlyHint: true, idempotentHint: true }
+			annotations: {
+				// 提示 Host 和模型，该 Tool 属于只读操作
+				readOnlyHint: true,
+				// 提示调用方，即使重复调用，也不会产生重复写入或其他额外副作用
+				idempotentHint: true
+			}
 		},
 		async ({ orderId, reason }) =>
 			businessResult(previewRefund(principal, orderId, reason))
@@ -148,6 +174,7 @@ function registerCommonCapabilities(server, principal) {
 			}
 		},
 		async (args, context) => {
+			// 相同幂等键已经创建过退款时，直接返回原结果。
 			const existingRefund = getRefundByIdempotencyKey(
 				principal,
 				args.idempotencyKey
@@ -161,6 +188,7 @@ function registerCommonCapabilities(server, principal) {
 				})
 			}
 
+			// 读取上一轮请求状态和本轮用户确认结果。
 			const previousState = context.mcpReq.requestState()
 			const response = inputResponse(
 				context.mcpReq.inputResponses,
@@ -177,12 +205,19 @@ function registerCommonCapabilities(server, principal) {
 				confirmationResponseSchema
 			)
 
+			// 尚未确认时，先执行退款预检，再请求 Host 收集用户确认。
 			if (!confirmation?.confirm) {
 				const preview = previewRefund(principal, args.orderId, args.reason)
-				if (!preview.ok || !preview.preview.eligible) return businessResult(preview)
+
+				if (!preview.ok || !preview.preview.eligible) {
+					return businessResult(preview)
+				}
 
 				const requestState = await requestStateCodec.mint(
-					{ operation: 'submit_refund_request', ...args },
+					{
+						operation: 'submit_refund_request',
+						...args
+					},
 					context
 				)
 
@@ -193,7 +228,11 @@ function registerCommonCapabilities(server, principal) {
 							message: `即将为订单 ${args.orderId} 创建 ${preview.preview.refundAmount} 元退款申请，是否继续？`,
 							requestedSchema: {
 								type: 'object',
-								properties: { confirm: { type: 'boolean' } },
+								properties: {
+									confirm: {
+										type: 'boolean'
+									}
+								},
 								required: ['confirm']
 							}
 						})
@@ -201,23 +240,32 @@ function registerCommonCapabilities(server, principal) {
 				})
 			}
 
+			// 校验确认信息是否属于当前退款请求，防止请求状态被复用。
 			if (
 				previousState?.operation !== 'submit_refund_request' ||
 				previousState.orderId !== args.orderId ||
 				previousState.idempotencyKey !== args.idempotencyKey
 			) {
 				return jsonResult(
-					{ ok: false, error: { code: 'INVALID_REQUEST_STATE', message: '确认信息与当前退款请求不一致' } },
+					{
+						ok: false,
+						error: {
+							code: 'INVALID_REQUEST_STATE',
+							message: '确认信息与当前退款请求不一致'
+						}
+					},
 					true
 				)
 			}
 
+			// 用户确认且状态校验通过后，正式创建退款申请。
 			return businessResult(submitRefund(principal, args))
 		}
 	)
 
 	// ==================== 售后 Resource 与 Prompt ====================
 
+	// 暴露当前租户自己的退款规则。
 	server.registerResource(
 		'refund-policy',
 		'after-sales://policies/refund-policy',
@@ -228,6 +276,7 @@ function registerCommonCapabilities(server, principal) {
 		},
 		async (uri) => {
 			const result = getPolicy(principal, 'refund-policy')
+
 			return {
 				contents: [
 					{
@@ -242,6 +291,7 @@ function registerCommonCapabilities(server, principal) {
 		}
 	)
 
+	// 提供一套可复用的售后问题处理提示词模板。
 	server.registerPrompt(
 		'handle_after_sales_case',
 		{
@@ -269,7 +319,8 @@ function registerCommonCapabilities(server, principal) {
 					}
 				}
 			]
-	}))
+		})
+	)
 }
 
 // ==================== 财务角色专属能力 ====================
@@ -288,7 +339,10 @@ function registerFinanceCapabilities(server, principal, appHtml) {
 		},
 		async ({ orderIds }, context) => {
 			const previousState = context.mcpReq.requestState()
-			const response = inputResponse(context.mcpReq.inputResponses, 'confirm-batch')
+			const response = inputResponse(
+				context.mcpReq.inputResponses,
+				'confirm-batch'
+			)
 
 			if (response.kind === 'elicit' && response.action !== 'accept') {
 				return cancelledResult('用户取消了批量退款审核')
@@ -326,7 +380,13 @@ function registerFinanceCapabilities(server, principal, appHtml) {
 				JSON.stringify(previousState.orderIds) !== JSON.stringify(orderIds)
 			) {
 				return jsonResult(
-					{ ok: false, error: { code: 'INVALID_REQUEST_STATE', message: '确认信息与当前批量任务不一致' } },
+					{
+						ok: false,
+						error: {
+							code: 'INVALID_REQUEST_STATE',
+							message: '确认信息与当前批量任务不一致'
+						}
+					},
 					true
 				)
 			}
@@ -415,18 +475,30 @@ function registerFinanceCapabilities(server, principal, appHtml) {
  * 每个 HTTP 请求都会创建新的 MCP Server，但共享外部业务服务中的状态。
  */
 export function createAfterSalesMcpServer({ principal, appHtml }) {
+	// 创建 MCP Server，并声明支持 Tools、Resources 和 Prompts。
 	const server = new McpServer(
 		{
 			name: 'enterprise-after-sales-mcp',
 			version: '1.0.0'
 		},
 		{
-			capabilities: { tools: {}, resources: {}, prompts: {} },
-			requestState: { verify: requestStateCodec.verify }
+			capabilities: {
+				tools: {},
+				resources: {},
+				prompts: {}
+			},
+
+			// 校验多轮请求中携带的 requestState，防止状态被篡改。
+			requestState: {
+				verify: requestStateCodec.verify
+			}
 		}
 	)
 
+	// 注册所有身份都可以访问的公共能力。
 	registerCommonCapabilities(server, principal)
+
+	// 财务角色可以额外访问退款审核和 MCP Apps 等财务能力。
 	if (principal.role === 'finance') {
 		registerFinanceCapabilities(server, principal, appHtml)
 	}

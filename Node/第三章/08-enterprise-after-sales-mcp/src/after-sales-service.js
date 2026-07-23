@@ -43,13 +43,24 @@ function appendAudit(principal, action, targetId, detail = {}) {
 
 // ==================== 多租户只读查询 ====================
 
-/** 根据当前登录人的 tenantId 查询订单，调用方不能自行指定租户。 */
+/**
+ * 根据当前登录人的租户身份查询订单。
+ *
+ * tenantId 只能从 principal 中读取，
+ * 调用方不能跨租户查询其他企业的订单。
+ *
+ * @param {object} principal 当前登录人的身份信息
+ * @param {string} orderId 订单编号
+ */
 export function getOrder(principal, orderId) {
+	// 同时匹配租户和订单编号，保证订单数据按租户隔离。
 	const order = orders.find(
 		(item) => item.tenantId === principal.tenantId && item.orderId === orderId
 	)
 
-	return order ? { ok: true, order: { ...order } } : businessError('ORDER_NOT_FOUND', `没有找到订单 ${orderId}`)
+	return order
+		? { ok: true, order: { ...order } }
+		: businessError('ORDER_NOT_FOUND', `没有找到订单 ${orderId}`)
 }
 
 export function getLogistics(principal, orderId) {
@@ -85,7 +96,9 @@ export function searchPolicies(principal, query) {
 		.filter((item) => item.tenantId === principal.tenantId)
 		.map((item) => ({
 			...item,
-			score: words.filter((word) => `${item.title}\n${item.content}`.toLowerCase().includes(word)).length
+			score: words.filter((word) =>
+				`${item.title}\n${item.content}`.toLowerCase().includes(word)
+			).length
 		}))
 		.filter((item) => item.score > 0)
 		.sort((a, b) => b.score - a.score)
@@ -147,7 +160,10 @@ export function submitRefund(principal, { orderId, reason, idempotencyKey }) {
 	const previewResult = previewRefund(principal, orderId, reason)
 	if (!previewResult.ok) return previewResult
 	if (!previewResult.preview.eligible) {
-		return businessError('REFUND_NOT_ELIGIBLE', previewResult.preview.conclusion)
+		return businessError(
+			'REFUND_NOT_ELIGIBLE',
+			previewResult.preview.conclusion
+		)
 	}
 
 	const refundRequest = {
@@ -162,7 +178,10 @@ export function submitRefund(principal, { orderId, reason, idempotencyKey }) {
 	}
 
 	refundRequests.set(idempotencyId, refundRequest)
-	appendAudit(principal, 'submit_refund', refundRequest.refundId, { orderId, idempotencyKey })
+	appendAudit(principal, 'submit_refund', refundRequest.refundId, {
+		orderId,
+		idempotencyKey
+	})
 
 	return { ok: true, duplicated: false, refundRequest: { ...refundRequest } }
 }
@@ -182,8 +201,11 @@ export function startBatchReview(principal, orderIds) {
 		return businessError('FORBIDDEN', '只有财务角色可以启动批量退款审核')
 	}
 
-	const invalidOrderId = orderIds.find((orderId) => !getOrder(principal, orderId).ok)
-	if (invalidOrderId) return businessError('ORDER_NOT_FOUND', `没有找到订单 ${invalidOrderId}`)
+	const invalidOrderId = orderIds.find(
+		(orderId) => !getOrder(principal, orderId).ok
+	)
+	if (invalidOrderId)
+		return businessError('ORDER_NOT_FOUND', `没有找到订单 ${invalidOrderId}`)
 
 	const job = {
 		jobId: `JOB-${randomUUID().slice(0, 8).toUpperCase()}`,
@@ -212,16 +234,30 @@ export function getJobSnapshot(principal, jobId) {
 	}
 
 	if (job.cancelledAt) {
-		return { ok: true, job: { ...job, status: 'cancelled', progress: 0, message: '任务已取消' } }
+		return {
+			ok: true,
+			job: { ...job, status: 'cancelled', progress: 0, message: '任务已取消' }
+		}
 	}
 
 	const elapsed = Date.now() - job.createdAt
 	if (elapsed < 800) {
-		return { ok: true, job: { ...job, status: 'working', progress: 25, message: '正在读取订单' } }
+		return {
+			ok: true,
+			job: { ...job, status: 'working', progress: 25, message: '正在读取订单' }
+		}
 	}
 
 	if (elapsed < 1600) {
-		return { ok: true, job: { ...job, status: 'working', progress: 70, message: '正在执行退款规则' } }
+		return {
+			ok: true,
+			job: {
+				...job,
+				status: 'working',
+				progress: 70,
+				message: '正在执行退款规则'
+			}
+		}
 	}
 
 	const details = job.orderIds.map((orderId) => {
@@ -243,7 +279,9 @@ export function getJobSnapshot(principal, jobId) {
 			message: '批量审核完成',
 			result: {
 				total: details.length,
-				autoApproved: details.filter((item) => item.eligible && !item.manualReview).length,
+				autoApproved: details.filter(
+					(item) => item.eligible && !item.manualReview
+				).length,
 				manualReview: details.filter((item) => item.manualReview).length,
 				rejected: details.filter((item) => !item.eligible).length,
 				details

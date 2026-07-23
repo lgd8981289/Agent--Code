@@ -14,11 +14,15 @@ import {
 	StreamableHTTPClientTransport
 } from '@modelcontextprotocol/client'
 
+/**
+ * 创建并连接售后 MCP Client。
+ */
 export async function createAfterSalesClient({
 	token,
 	autoConfirm = true,
 	name = 'enterprise-after-sales-client'
 }) {
+	// 创建 Client，并声明支持 Elicitation 和 MCP Apps。
 	const client = new Client(
 		{ name, version: '1.0.0' },
 		{
@@ -34,18 +38,22 @@ export async function createAfterSalesClient({
 		}
 	)
 
+	// 处理 Server 发起的用户确认请求。
 	client.setRequestHandler('elicitation/create', async (request) => {
 		console.log(`\n[Human-in-the-Loop] ${request.params.message}`)
+
 		return autoConfirm
 			? { action: 'accept', content: { confirm: true } }
 			: { action: 'decline' }
 	})
 
+	// 创建 Streamable HTTP 传输层，并携带身份认证 Token。
 	const transport = new StreamableHTTPClientTransport(
 		new URL(process.env.MCP_SERVER_URL ?? 'http://127.0.0.1:3100/mcp'),
 		{ authProvider: { token: async () => token } }
 	)
 
+	// 连接 MCP Server，并返回可直接使用的 Client。
 	await client.connect(transport)
 	return client
 }

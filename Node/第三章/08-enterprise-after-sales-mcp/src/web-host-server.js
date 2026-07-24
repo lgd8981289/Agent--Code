@@ -20,7 +20,9 @@ import { createAfterSalesClient } from './mcp-client.js'
 const hostPort = Number(process.env.WEB_HOST_PORT ?? 3200)
 const sandboxPort = Number(process.env.WEB_SANDBOX_PORT ?? 3201)
 const hostName = '127.0.0.1'
-const distDirectory = fileURLToPath(new URL('../dist-web-host', import.meta.url))
+const distDirectory = fileURLToPath(
+	new URL('../dist-web-host', import.meta.url)
+)
 
 class ElicitationNeeded extends Error {
 	constructor(message) {
@@ -60,7 +62,8 @@ async function readJsonBody(request) {
 }
 
 function safeFilePath(pathname) {
-	const relativePath = pathname === '/' ? 'index.html' : decodeURIComponent(pathname.slice(1))
+	const relativePath =
+		pathname === '/' ? 'index.html' : decodeURIComponent(pathname.slice(1))
 	const filePath = resolve(distDirectory, relativePath)
 	const rootPrefix = `${resolve(distDirectory)}${sep}`
 
@@ -79,7 +82,8 @@ async function sendFile(response, pathname, extraHeaders = {}) {
 		if (!(await stat(filePath)).isFile()) return false
 		const content = await readFile(filePath)
 		response.writeHead(200, {
-			'content-type': mimeTypes[extname(filePath)] ?? 'application/octet-stream',
+			'content-type':
+				mimeTypes[extname(filePath)] ?? 'application/octet-stream',
 			'x-content-type-options': 'nosniff',
 			...extraHeaders
 		})
@@ -123,34 +127,50 @@ function buildSandboxCsp(csp = {}) {
 }
 
 // ==================== Node 层 MCP Client 代理 ====================
-
+/**
+ * 创建临时 MCP Client，执行指定操作后自动关闭连接。
+ */
 async function withMcpClient(token, decision, action) {
+	// 创建并连接售后 MCP Client
 	const client = await createAfterSalesClient({
 		token,
 		autoConfirm: false,
 		name: 'enterprise-after-sales-web-host'
 	})
 
+	// 根据前端传入的 decision 处理 Server 发起的用户确认请求。
 	client.setRequestHandler('elicitation/create', async (request) => {
 		if (decision === 'accept') {
-			return { action: 'accept', content: { confirm: true } }
+			return {
+				action: 'accept',
+				content: { confirm: true }
+			}
 		}
-		if (decision === 'decline') return { action: 'decline' }
+
+		if (decision === 'decline') {
+			return { action: 'decline' }
+		}
+
+		// 尚未获得用户选择时，将确认请求交给上层接口处理。
 		throw new ElicitationNeeded(request.params.message)
 	})
 
 	try {
 		return await action(client)
 	} finally {
+		// 无论操作成功还是失败，都关闭 MCP Client。
 		await client.close()
 	}
 }
 
 // ==================== 浏览器 Web Host 服务 ====================
-
+/**
+ * 创建 Host HTTP Server，负责连接前端、模型和 MCP Server。
+ */
 const hostServer = createServer(async (request, response) => {
 	const url = new URL(request.url ?? '/', `http://${request.headers.host}`)
 
+	// 返回前端运行所需的模型和 Sandbox 配置
 	if (request.method === 'GET' && url.pathname === '/api/config') {
 		sendJson(response, 200, {
 			sandboxUrl: `http://${hostName}:${sandboxPort}/sandbox.html`,
@@ -159,12 +179,15 @@ const hostServer = createServer(async (request, response) => {
 		return
 	}
 
+	// 根据当前身份连接 MCP Server，并获取可用的 Tools。
 	if (request.method === 'POST' && url.pathname === '/api/mcp/tools') {
 		try {
 			const { token } = await readJsonBody(request)
+
 			const result = await withMcpClient(token, 'prompt', (client) =>
 				client.listTools()
 			)
+
 			sendJson(response, 200, result)
 		} catch (error) {
 			sendJson(response, 500, {
@@ -174,17 +197,34 @@ const hostServer = createServer(async (request, response) => {
 		return
 	}
 
+	// 调用 MCP Tool，并将用户确认请求转换成前端可处理的结果。
 	if (request.method === 'POST' && url.pathname === '/api/mcp/call') {
 		try {
-			const { token, name, arguments: args, decision = 'prompt' } =
-				await readJsonBody(request)
+			const {
+				token,
+				name,
+				arguments: args,
+				decision = 'prompt'
+			} = await readJsonBody(request)
+
 			const result = await withMcpClient(token, decision, (client) =>
-				client.callTool({ name, arguments: args })
+				client.callTool({
+					name,
+					arguments: args
+				})
 			)
-			sendJson(response, 200, { kind: 'result', result })
+
+			sendJson(response, 200, {
+				kind: 'result',
+				result
+			})
 		} catch (error) {
+			// Server 要求用户确认时，不按异常返回，而是通知前端弹出确认框。
 			if (error instanceof ElicitationNeeded) {
-				sendJson(response, 200, { kind: 'elicitation', message: error.message })
+				sendJson(response, 200, {
+					kind: 'elicitation',
+					message: error.message
+				})
 				return
 			}
 
@@ -195,12 +235,15 @@ const hostServer = createServer(async (request, response) => {
 		return
 	}
 
+	// 读取 MCP Server 暴露的 Resource。
 	if (request.method === 'POST' && url.pathname === '/api/mcp/resource') {
 		try {
 			const { token, uri } = await readJsonBody(request)
+
 			const result = await withMcpClient(token, 'prompt', (client) =>
 				client.readResource({ uri })
 			)
+
 			sendJson(response, 200, result)
 		} catch (error) {
 			sendJson(response, 500, {
@@ -210,14 +253,20 @@ const hostServer = createServer(async (request, response) => {
 		return
 	}
 
+	// 接收对话历史和工具定义，调用大模型生成下一条消息。
 	if (request.method === 'POST' && url.pathname === '/api/model') {
 		try {
 			const { messages, tools } = await readJsonBody(request)
+
 			if (!Array.isArray(messages) || !Array.isArray(tools)) {
 				throw new Error('messages 和 tools 必须是数组')
 			}
 
-			const message = await callDeepSeek({ messages, tools })
+			const message = await callDeepSeek({
+				messages,
+				tools
+			})
+
 			sendJson(response, 200, { message })
 		} catch (error) {
 			sendJson(response, 500, {
@@ -227,15 +276,20 @@ const hostServer = createServer(async (request, response) => {
 		return
 	}
 
-	// sandbox.html 只能从独立的 Sandbox Origin 加载。
+	// sandbox.html 只能通过独立的 Sandbox Origin 加载。
 	if (url.pathname === '/sandbox.html') {
 		response.writeHead(404).end()
 		return
 	}
 
-	if (request.method === 'GET' && (await sendFile(response, url.pathname))) return
+	// 处理前端 HTML、JavaScript 和 CSS 等静态文件。
+	if (request.method === 'GET' && (await sendFile(response, url.pathname))) {
+		return
+	}
 
-	response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' })
+	response.writeHead(404, {
+		'content-type': 'text/plain; charset=utf-8'
+	})
 	response.end('Not Found')
 })
 
@@ -265,7 +319,10 @@ const sandboxServer = createServer(async (request, response) => {
 	}
 
 	// Vite 构建的 Sandbox 脚本必须与沙箱同源。
-	if (url.pathname.startsWith('/assets/') && (await sendFile(response, url.pathname))) {
+	if (
+		url.pathname.startsWith('/assets/') &&
+		(await sendFile(response, url.pathname))
+	) {
 		return
 	}
 

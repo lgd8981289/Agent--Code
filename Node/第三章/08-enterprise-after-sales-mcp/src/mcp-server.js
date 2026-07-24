@@ -338,7 +338,9 @@ function registerFinanceCapabilities(server, principal, appHtml) {
 			annotations: { readOnlyHint: false, destructiveHint: true }
 		},
 		async ({ orderIds }, context) => {
+			// 用户确认之前准备执行的操作和订单参数
 			const previousState = context.mcpReq.requestState()
+			// 用户刚刚提交的确认结果
 			const response = inputResponse(
 				context.mcpReq.inputResponses,
 				'confirm-batch'
@@ -391,6 +393,7 @@ function registerFinanceCapabilities(server, principal, appHtml) {
 				)
 			}
 
+			// 用户确认且状态校验通过后，正式创建批量审核后台任务。
 			return businessResult(startBatchReview(principal, orderIds))
 		}
 	)
@@ -454,6 +457,7 @@ function registerFinanceCapabilities(server, principal, appHtml) {
 	registerAppResource(
 		server,
 		'批量退款审核报告',
+		// APP_URI 的值是：'ui://after-sales/batch-review-report.html'
 		APP_URI,
 		{ description: '以可视化界面展示批量退款审核结果' },
 		async () => ({

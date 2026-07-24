@@ -195,18 +195,25 @@ export function getRefundByIdempotencyKey(principal, idempotencyKey) {
 }
 
 // ==================== 批量审核长任务 ====================
-
+/**
+ * 为当前租户启动批量退款审核任务。
+ */
 export function startBatchReview(principal, orderIds) {
+	// 只有财务角色可以执行批量退款审核。
 	if (principal.role !== 'finance') {
 		return businessError('FORBIDDEN', '只有财务角色可以启动批量退款审核')
 	}
 
+	// 校验所有订单是否都属于当前租户并且真实存在。
 	const invalidOrderId = orderIds.find(
 		(orderId) => !getOrder(principal, orderId).ok
 	)
-	if (invalidOrderId)
-		return businessError('ORDER_NOT_FOUND', `没有找到订单 ${invalidOrderId}`)
 
+	if (invalidOrderId) {
+		return businessError('ORDER_NOT_FOUND', `没有找到订单 ${invalidOrderId}`)
+	}
+
+	// 创建后台审核任务，并记录租户和操作人身份。
 	const job = {
 		jobId: `JOB-${randomUUID().slice(0, 8).toUpperCase()}`,
 		tenantId: principal.tenantId,
@@ -217,10 +224,14 @@ export function startBatchReview(principal, orderIds) {
 		cancelledAt: null
 	}
 
+	// 保存任务并记录审计日志。
 	reviewJobs.set(job.jobId, job)
 	appendAudit(principal, 'start_batch_review', job.jobId, { orderIds })
 
-	return { ok: true, job: getJobSnapshot(principal, job.jobId).job }
+	return {
+		ok: true,
+		job: getJobSnapshot(principal, job.jobId).job
+	}
 }
 
 /**

@@ -55,7 +55,10 @@ function createConversationMessages() {
 
 function scrollToLatest() {
 	requestAnimationFrame(() => {
-		timelineElement.scrollTo({ top: timelineElement.scrollHeight, behavior: 'smooth' })
+		timelineElement.scrollTo({
+			top: timelineElement.scrollHeight,
+			behavior: 'smooth'
+		})
 	})
 }
 
@@ -113,8 +116,10 @@ function formatJson(value) {
 }
 
 function extractToolText(result) {
-	return result.content?.find((item) => item.type === 'text')?.text
-		?? JSON.stringify(result.structuredContent ?? {})
+	return (
+		result.content?.find((item) => item.type === 'text')?.text ??
+		JSON.stringify(result.structuredContent ?? {})
+	)
 }
 
 function extractStructuredResult(result) {
@@ -154,7 +159,8 @@ function appendToolCard(name, args) {
 			state.textContent = '执行失败'
 			state.className = 'error'
 			const output = document.createElement('pre')
-			output.textContent = error instanceof Error ? error.message : String(error)
+			output.textContent =
+				error instanceof Error ? error.message : String(error)
 			content.append(output)
 		}
 	}
@@ -170,10 +176,17 @@ function showConfirmation(message) {
 	})
 }
 
+/**
+ * 关闭确认弹窗，并返回用户的确认结果。
+ */
 function finishConfirmation(accepted) {
 	modalElement.hidden = true
+
+	// 取出并清空当前确认请求的 Promise resolve。
 	const resolve = confirmationResolver
 	confirmationResolver = undefined
+
+	// 将用户的同意或拒绝结果返回给等待中的确认流程。
 	resolve?.(
 		accepted
 			? { action: 'accept', content: { confirm: true } }
@@ -204,7 +217,8 @@ async function postJson(url, body) {
 		body: JSON.stringify(body)
 	})
 	const data = await response.json()
-	if (!response.ok) throw new Error(data.error ?? `请求失败：${response.status}`)
+	if (!response.ok)
+		throw new Error(data.error ?? `请求失败：${response.status}`)
 	return data
 }
 
@@ -230,12 +244,19 @@ async function callModel() {
 	return data.message
 }
 
+/**
+ * 调用 MCP Tool，并同步更新调用卡片和 MCP App。
+ */
 async function callMcpTool(name, args, { renderApp = true } = {}) {
+	// 创建 Tool 调用卡片，展示工具名称和参数。
 	const card = appendToolCard(name, args)
+
 	try {
+		// 调用 MCP Tool，并等待结果。
 		const result = await requestMcpTool(name, args)
 		card.complete(result)
 
+		// Tool 绑定了 UI Resource 时，将结果渲染为 MCP App。
 		const tool = toolsByName.get(name)
 		if (renderApp && tool && getToolUiResourceUri(tool)) {
 			await renderMcpApp({ tool, args, result })
@@ -243,12 +264,17 @@ async function callMcpTool(name, args, { renderApp = true } = {}) {
 
 		return result
 	} catch (error) {
+		// 标记 Tool 调用失败，并继续向上抛出异常。
 		card.fail(error)
 		throw error
 	}
 }
 
+/**
+ * 调用 MCP Tool，并处理可能出现的用户确认流程。
+ */
 async function requestMcpTool(name, args) {
+	// 第一次调用 Tool，允许 Server 请求用户确认。
 	let response = await postJson('/api/mcp/call', {
 		token: identityElement.value,
 		name,
@@ -256,8 +282,10 @@ async function requestMcpTool(name, args) {
 		decision: 'prompt'
 	})
 
+	// Server 要求确认时，收集用户选择并重新调用原 Tool。
 	if (response.kind === 'elicitation') {
 		const answer = await showConfirmation(response.message)
+
 		response = await postJson('/api/mcp/call', {
 			token: identityElement.value,
 			name,
@@ -266,7 +294,11 @@ async function requestMcpTool(name, args) {
 		})
 	}
 
-	if (response.kind !== 'result') throw new Error('MCP Tool 没有返回有效结果')
+	// 最终必须返回正常的 Tool Result。
+	if (response.kind !== 'result') {
+		throw new Error('MCP Tool 没有返回有效结果')
+	}
+
 	return response.result
 }
 
@@ -313,8 +345,8 @@ function waitForSandbox(iframe, url) {
 
 		const listener = (event) => {
 			if (
-				event.source === iframe.contentWindow
-				&& event.data?.method === 'ui/notifications/sandbox-proxy-ready'
+				event.source === iframe.contentWindow &&
+				event.data?.method === 'ui/notifications/sandbox-proxy-ready'
 			) {
 				window.clearTimeout(timeout)
 				window.removeEventListener('message', listener)
@@ -347,7 +379,11 @@ async function readAppResource(tool) {
 	}
 }
 
+/**
+ * 读取 Tool 绑定的 UI Resource，并在 Sandbox iframe 中渲染 MCP App。
+ */
 async function renderMcpApp({ tool, args, result }) {
+	// 创建 MCP App 外层容器和加载状态。
 	const appShell = document.createElement('section')
 	appShell.className = 'mcp-app-shell'
 	appShell.innerHTML = `
@@ -364,24 +400,40 @@ async function renderMcpApp({ tool, args, result }) {
 	scrollToLatest()
 
 	try {
+		// 从 MCP Server 读取 App HTML、安全策略和权限配置。
 		const { html, csp, permissions } = await readAppResource(tool)
+
+		// 使用受限 iframe 隔离运行 MCP App。
 		const iframe = document.createElement('iframe')
 		iframe.title = '批量退款审核报告'
 		iframe.className = 'mcp-app-frame'
-		iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms')
+		iframe.setAttribute(
+			'sandbox',
+			'allow-scripts allow-same-origin allow-forms'
+		)
 
 		const allow = buildAllowAttribute(permissions)
 		if (allow) iframe.setAttribute('allow', allow)
 
 		loading.replaceWith(iframe)
+
+		// 加载独立 Sandbox 页面，并传入 CSP 配置。
 		const sandboxUrl = new URL(config.sandboxUrl)
 		if (csp) sandboxUrl.searchParams.set('csp', JSON.stringify(csp))
 		await waitForSandbox(iframe, sandboxUrl.href)
 
+		// 创建 Host 与 iframe 内 MCP App 之间的通信桥接。
 		const bridge = new AppBridge(
 			null,
-			{ name: 'enterprise-after-sales-web-host', version: '1.0.0' },
-			{ openLinks: {}, serverTools: {}, serverResources: {} },
+			{
+				name: 'enterprise-after-sales-web-host',
+				version: '1.0.0'
+			},
+			{
+				openLinks: {},
+				serverTools: {},
+				serverResources: {}
+			},
 			{
 				hostContext: {
 					theme: 'light',
@@ -390,11 +442,14 @@ async function renderMcpApp({ tool, args, result }) {
 					timeZone: 'Asia/Shanghai',
 					displayMode: 'inline',
 					availableDisplayModes: ['inline'],
-					containerDimensions: { maxHeight: 900 }
+					containerDimensions: {
+						maxHeight: 900
+					}
 				}
 			}
 		)
 
+		// 注册 MCP App 发给 Host 的事件处理器。
 		bridge.onopenlink = async ({ url }) => {
 			window.open(url, '_blank', 'noopener,noreferrer')
 			return {}
@@ -402,43 +457,70 @@ async function renderMcpApp({ tool, args, result }) {
 		bridge.onmessage = async () => ({})
 		bridge.onupdatemodelcontext = async () => ({})
 		bridge.onsizechange = ({ height }) => {
-			if (height) iframe.style.height = `${Math.min(Math.max(height, 280), 900)}px`
+			if (height) {
+				iframe.style.height = `${Math.min(Math.max(height, 280), 900)}px`
+			}
 		}
-		bridge.onrequestdisplaymode = async () => ({ mode: 'inline' })
+		bridge.onrequestdisplaymode = async () => ({
+			mode: 'inline'
+		})
 
 		const initialized = new Promise((resolve) => {
 			bridge.oninitialized = resolve
 		})
 
+		// 建立通信，并依次发送 UI Resource、Tool 参数和 Tool Result。
 		await bridge.connect(
 			new PostMessageTransport(iframe.contentWindow, iframe.contentWindow)
 		)
-		await bridge.sendSandboxResourceReady({ html, csp, permissions })
+		// 第一份：MCP App 的页面资源
+		await bridge.sendSandboxResourceReady({
+			html,
+			csp,
+			permissions
+		})
 		await initialized
+		// 第二份：Tool 调用参数
 		await bridge.sendToolInput({ arguments: args })
+		// 第三份：Tool 调用结果
 		await bridge.sendToolResult(result)
+
 		appBridges.push(bridge)
 	} catch (error) {
+		// App 加载失败时，在原位置显示错误信息。
 		const errorElement = document.createElement('div')
 		errorElement.className = 'app-loading error'
-		errorElement.textContent = error instanceof Error ? error.message : String(error)
-		if (loading.isConnected) loading.replaceWith(errorElement)
-		else appShell.append(errorElement)
+		errorElement.textContent =
+			error instanceof Error ? error.message : String(error)
+
+		if (loading.isConnected) {
+			loading.replaceWith(errorElement)
+		} else {
+			appShell.append(errorElement)
+		}
+
 		throw error
 	}
 }
 
+/**
+ * 按固定流程演示批量退款审核与 MCP App 报告。
+ */
 async function runDeterministicAppDemo() {
+	// 批量退款审核只对财务身份开放，必要时先切换身份并重新连接。
 	if (identityElement.value !== 'token-blue-finance') {
 		identityElement.value = 'token-blue-finance'
 		await startNewConversation({ reconnect: true })
 	}
 
 	appendMessage('user', '批量审核订单 A1024、A1025、A1026，并生成可视化报告。')
+
+	// 启动后台批量审核任务。
 	const startResult = await callMcpTool('start_batch_refund_review', {
 		orderIds: ['A1024', 'A1025', 'A1026']
 	})
 	const started = extractStructuredResult(startResult)
+
 	if (!started.ok) {
 		appendMessage('assistant', started.error?.message ?? '批量审核未启动。')
 		return
@@ -448,18 +530,32 @@ async function runDeterministicAppDemo() {
 	const progress = appendStatus(`任务 ${jobId} 正在后台审核……`)
 	let snapshot
 
+	// 定时查询任务状态，并更新页面中的审核进度。
 	for (let attempt = 0; attempt < 8; attempt += 1) {
 		await new Promise((resolve) => window.setTimeout(resolve, 350))
-		const statusResult = await requestMcpTool('get_batch_review_status', { jobId })
+
+		const statusResult = await requestMcpTool('get_batch_review_status', {
+			jobId
+		})
+
 		snapshot = extractStructuredResult(statusResult)
-		progress.lastChild.textContent = `任务 ${jobId}：${snapshot.job?.progress ?? 0}% ${snapshot.job?.message ?? ''}`
+
+		progress.lastChild.textContent =
+			`任务 ${jobId}：${snapshot.job?.progress ?? 0}% ` +
+			`${snapshot.job?.message ?? ''}`
+
 		if (snapshot.job?.status === 'completed') break
 	}
 
 	progress.remove()
-	if (snapshot?.job?.status !== 'completed') throw new Error('批量审核等待超时')
 
+	if (snapshot?.job?.status !== 'completed') {
+		throw new Error('批量审核等待超时')
+	}
+
+	// 任务完成后获取报告，Tool 返回的 MCP App 会加载到对话中。
 	await callMcpTool('get_batch_review_report', { jobId })
+
 	appendMessage('assistant', '批量审核已完成，MCP App 报告已经加载在对话中。')
 }
 
@@ -474,8 +570,14 @@ async function startNewConversation({ reconnect = false } = {}) {
 			`已切换为${identityLabels[identityElement.value]}。这是一段新对话，你可以开始提问。`
 		)
 	} catch (error) {
-		setConnection('error', error instanceof Error ? error.message : String(error))
-		appendMessage('assistant', `连接失败：${error instanceof Error ? error.message : String(error)}`)
+		setConnection(
+			'error',
+			error instanceof Error ? error.message : String(error)
+		)
+		appendMessage(
+			'assistant',
+			`连接失败：${error instanceof Error ? error.message : String(error)}`
+		)
 	} finally {
 		setBusy(false)
 		questionElement.focus()
@@ -492,7 +594,10 @@ chatFormElement.addEventListener('submit', async (event) => {
 	try {
 		await runAgentTurn(question)
 	} catch (error) {
-		appendMessage('assistant', `执行失败：${error instanceof Error ? error.message : String(error)}`)
+		appendMessage(
+			'assistant',
+			`执行失败：${error instanceof Error ? error.message : String(error)}`
+		)
 	} finally {
 		setBusy(false)
 		questionElement.focus()
@@ -518,7 +623,9 @@ document.querySelectorAll('[data-prompt]').forEach((button) => {
 	})
 })
 
-identityElement.addEventListener('change', () => startNewConversation({ reconnect: true }))
+identityElement.addEventListener('change', () =>
+	startNewConversation({ reconnect: true })
+)
 resetButtonElement.addEventListener('click', () => startNewConversation())
 acceptButtonElement.addEventListener('click', () => finishConfirmation(true))
 declineButtonElement.addEventListener('click', () => finishConfirmation(false))
@@ -528,15 +635,24 @@ appDemoButtonElement.addEventListener('click', async () => {
 	try {
 		await runDeterministicAppDemo()
 	} catch (error) {
-		appendMessage('assistant', `MCP App 演示失败：${error instanceof Error ? error.message : String(error)}`)
+		appendMessage(
+			'assistant',
+			`MCP App 演示失败：${error instanceof Error ? error.message : String(error)}`
+		)
 	} finally {
 		setBusy(false)
 	}
 })
 
+/**
+ * 初始化前端应用。
+ */
 async function main() {
+	// 获取服务端配置，并显示当前使用的模型。
 	config = await fetch('/api/config').then((response) => response.json())
 	modelNameElement.textContent = config.model
+
+	// 创建新的对话，并重新连接 MCP 服务。
 	await startNewConversation({ reconnect: true })
 }
 

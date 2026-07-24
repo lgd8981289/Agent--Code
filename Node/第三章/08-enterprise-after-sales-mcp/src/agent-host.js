@@ -51,20 +51,29 @@ export async function runAgentTurn({
 	callModel = callDeepSeek,
 	logger = console
 }) {
-	// 把本轮用户输入追加到对话历史，而不是重新创建 messages。
-	messages.push({ role: 'user', content: question })
+	// 将本轮用户问题追加到已有对话历史中。
+	messages.push({
+		role: 'user',
+		content: question
+	})
 
+	// 最多执行 8 轮“调用模型 → 执行 Tool → 回传结果”。
 	for (let round = 1; round <= 8; round += 1) {
 		const assistantMessage = await callModel({ messages, tools })
+
+		// 保存模型回复，包括可能存在的 tool_calls。
 		messages.push(assistantMessage)
 
+		// 模型没有继续调用 Tool，说明本轮对话已经得到最终回答。
 		if (!assistantMessage.tool_calls?.length) {
 			logger.log(`\nAgent：${assistantMessage.content}`)
 			return
 		}
 
+		// 依次执行模型本轮返回的所有 Tool Call。
 		for (const toolCall of assistantMessage.tool_calls) {
 			const args = JSON.parse(toolCall.function.arguments || '{}')
+
 			logger.log(`\n[Tool] ${toolCall.function.name}`)
 			logger.dir(args, { depth: null })
 
@@ -73,8 +82,12 @@ export async function runAgentTurn({
 				arguments: args
 			})
 
+			// 读取 Tool 返回的文本结果。
 			const content = result.content?.find((item) => item.type === 'text')?.text
+
 			logger.log(content)
+
+			// 将 Tool Result 回传给模型，供下一轮生成继续使用。
 			messages.push({
 				role: 'tool',
 				tool_call_id: toolCall.id,

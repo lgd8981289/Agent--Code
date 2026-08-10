@@ -25,13 +25,37 @@ export class WorkspaceService {
 	)
 	private readonly workspacesRoot = resolve(this.projectRoot, 'workspaces')
 
-	/** 为一次 Agent Run 创建独立且可丢弃的代码工作区。 */
+	/**
+	 * 为一次 Agent Run 创建独立且可丢弃的代码工作区。
+	 *
+	 * 工作区由基础项目和当前场景的 Overlay 共同组成，
+	 * 并在执行开始前保存原始文件快照，供后续生成 Diff 和校验修改范围。
+	 *
+	 * @param runId 当前 Agent Run 的唯一标识
+	 * @param scenario 当前运行使用的场景配置
+	 */
 	async create(runId: string, scenario: ScenarioDefinition): Promise<void> {
+		// ===================================================
+		// 第一件，根据 `runId` 创建本次运行专属的工作区
+		// ==========================================================
+		// 根据 Run ID 计算本次运行对应的独立工作区路径。
 		const workspace = this.getWorkspacePath(runId)
-		await rm(workspace, { recursive: true, force: true })
-		await mkdir(workspace, { recursive: true })
-		await cp(resolve(this.fixturesRoot, 'base'), workspace, { recursive: true })
 
+		// 清理可能存在的旧工作区，确保每次运行都从干净环境开始。
+		await rm(workspace, { recursive: true, force: true })
+
+		// ==================================================
+		// 第二件，向工作区复制代码
+		// ==========================================================
+		// 创建本次 Run 的空工作区目录。
+		await mkdir(workspace, { recursive: true })
+
+		// 将所有场景共享的基础项目完整复制到独立工作区。
+		await cp(resolve(this.fixturesRoot, 'base'), workspace, {
+			recursive: true
+		})
+
+		// 如果当前场景配置了 Overlay，则将场景专属文件覆盖到基础项目中。
 		if (scenario.overlay) {
 			await cp(
 				resolve(this.fixturesRoot, 'overlays', scenario.overlay),
@@ -40,8 +64,16 @@ export class WorkspaceService {
 			)
 		}
 
+		// ==========================================================
+		// 第三件，在 Agent 修改代码前，`captureSnapshot()` 会读取工作区的所有文件，把原始内容保存到 `.agent/original.json` 中
+		// ==========================================================
+		// 在 Agent 修改代码前，记录工作区当前的完整文件快照。
 		const snapshot = await this.captureSnapshot(runId)
+
+		// 创建 Agent 内部元数据目录，不参与业务代码修改。
 		await mkdir(resolve(workspace, '.agent'), { recursive: true })
+
+		// 保存原始快照，后续可用于计算文件新增、修改和删除情况。
 		await writeFile(
 			resolve(workspace, '.agent/original.json'),
 			JSON.stringify(snapshot, null, 2),
@@ -86,24 +118,55 @@ export class WorkspaceService {
 		return readFile(target, 'utf8')
 	}
 
+	/**
+	 * 在指定 Run 的工作区中搜索包含关键词的代码行。
+	 *
+	 * 搜索范围仅包含 TypeScript、JavaScript 和 JSON 文件，
+	 * 匹配时忽略大小写，并最多返回 80 条结果。
+	 *
+	 * @param runId 当前运行的唯一标识
+	 * @param query 需要搜索的关键词
+	 * @returns 匹配结果，包括文件路径、行号和对应代码内容
+	 */
 	async search(runId: string, query: string) {
+		// 不允许执行空关键词搜索，避免无意义地扫描整个工作区。
 		if (!query.trim()) {
 			throw new Error('搜索关键词不能为空。')
 		}
 
+		// 将关键词统一转换为小写，实现不区分大小写的匹配。
 		const normalizedQuery = query.toLowerCase()
-		const files = await this.listFiles(runId)
-		const matches: Array<{ path: string; line: number; content: string }> = []
 
-		for (const path of files.filter((item) => /\.(ts|tsx|js|json)$/.test(item))) {
+		// 获取当前 Run 工作区中的全部文件。
+		const files = await this.listFiles(runId)
+
+		// 保存匹配到的文件路径、行号和代码内容。
+		const matches: Array<{
+			path: string
+			line: number
+			content: string
+		}> = []
+
+		// 只搜索支持的代码和配置文件，跳过其他类型的文件。
+		for (const path of files.filter((item) =>
+			/\.(ts|tsx|js|json)$/.test(item)
+		)) {
+			// 读取当前文件的完整内容。
 			const content = await this.read(runId, path)
+
+			// 按行检查文件内容，便于返回准确的匹配行号。
 			content.split('\n').forEach((line, index) => {
 				if (line.toLowerCase().includes(normalizedQuery)) {
-					matches.push({ path, line: index + 1, content: line.trim() })
+					matches.push({
+						path,
+						line: index + 1,
+						content: line.trim()
+					})
 				}
 			})
 		}
 
+		// 限制返回结果数量，避免搜索结果过多影响后续处理。
 		return matches.slice(0, 80)
 	}
 
@@ -232,7 +295,11 @@ export class WorkspaceService {
 		const result: string[] = []
 
 		for (const entry of entries) {
-			if (entry.name === '.agent' || entry.name === 'node_modules' || entry.name === 'dist') {
+			if (
+				entry.name === '.agent' ||
+				entry.name === 'node_modules' ||
+				entry.name === 'dist'
+			) {
 				continue
 			}
 

@@ -11,6 +11,15 @@ const task: TaskRecord = {
 }
 
 describe('isTaskOverdue', () => {
+	it('does not mark a completed task overdue', () => {
+		expect(
+			isTaskOverdue(
+				{ ...task, status: 'done' },
+				new Date('2026-08-03T10:00:01.000Z')
+			)
+		).toBe(false)
+	})
+
 	it('does not mark a task overdue at the exact due time', () => {
 		expect(isTaskOverdue(task, new Date('2026-08-03T10:00:00.000Z'))).toBe(false)
 	})

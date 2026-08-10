@@ -56,24 +56,38 @@ export class RunsController {
 		return this.runtime.listRuns()
 	}
 
+	/**
+	 * 创建一次新的 Agent Run。
+	 *
+	 * 请求体中必须提供场景 ID，并可选指定运行需求和执行模式。
+	 */
 	@Post('runs')
 	async createRun(
 		@Body()
-		body: { scenarioId?: string; requirement?: string; mode?: RunMode }
+		body: {
+			scenarioId?: string
+			requirement?: string
+			mode?: RunMode
+		}
 	) {
+		// 场景 ID 是创建 Run 的必要参数。
 		if (!body.scenarioId) {
 			throw new BadRequestException('scenarioId 不能为空。')
 		}
 
 		try {
+			// 仅允许使用 AI 实时决策或 Replay 固定轨迹两种运行模式。
 			if (body.mode && body.mode !== 'ai' && body.mode !== 'replay') {
 				throw new Error('mode 只能是 ai 或 replay。')
 			}
+
+			// 将场景配置和用户输入交给 Runtime，创建并启动新的 Agent Run。
 			return await this.runtime.createRun(body.scenarioId, {
 				requirement: body.requirement,
 				mode: body.mode
 			})
 		} catch (error) {
+			// 将参数校验或 Runtime 抛出的异常转换为统一的 400 响应。
 			throw new BadRequestException(toMessage(error))
 		}
 	}
@@ -88,10 +102,7 @@ export class RunsController {
 	}
 
 	@Post('runs/:id/approval')
-	async approve(
-		@Param('id') id: string,
-		@Body() body: { approved?: boolean }
-	) {
+	async approve(@Param('id') id: string, @Body() body: { approved?: boolean }) {
 		if (typeof body.approved !== 'boolean') {
 			throw new BadRequestException('approved 必须是布尔值。')
 		}

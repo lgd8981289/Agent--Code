@@ -12,11 +12,7 @@ export type RunStatus =
 
 export type RunMode = 'ai' | 'replay'
 
-export type PlanStepStatus =
-	| 'pending'
-	| 'running'
-	| 'completed'
-	| 'cancelled'
+export type PlanStepStatus = 'pending' | 'running' | 'completed' | 'cancelled'
 
 export type TraceEventType =
 	| 'run'
@@ -215,14 +211,34 @@ export type AgentDecision =
 	| ReplanTemplate
 	| FinalTemplate
 
+/**
+ * Provider 单次决策调用的返回结果。
+ *
+ * 除了 Agent 的下一步决策，还包含决策来源、实际使用的模型、
+ * 调用耗时以及 Token 消耗等运行统计信息。
+ */
 export interface ProviderResult {
+	// Provider 返回的下一步决策，可能是 Action、Replan 或 Final。
 	decision: AgentDecision
+
+	// 当前决策的来源模式，用于区分 AI 动态决策和 Replay 固定轨迹。
 	source: RunMode
+
+	// 实际参与本次决策的模型名称；Replay 模式下通常为 null。
 	model: string | null
+
+	// Provider 完成本次决策所消耗的时间，单位为毫秒。
 	latencyMs?: number
+
+	// 模型调用产生的 Token 使用情况；Replay 模式下通常不存在。
 	usage?: {
+		// 输入给模型的 Prompt Token 数量。
 		promptTokens: number
+
+		// 模型生成决策所消耗的输出 Token 数量。
 		completionTokens: number
+
+		// 本次调用消耗的 Token 总数。
 		totalTokens: number
 	}
 }

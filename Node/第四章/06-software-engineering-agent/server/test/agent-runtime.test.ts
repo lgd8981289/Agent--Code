@@ -63,6 +63,29 @@ describe.sequential('Software Engineering Agent Runtime', () => {
 			status: 'completed',
 			createdInVersion: 2
 		})
+		expect(
+			run.plan.steps.find((step) => step.id === 'inspect-completed-status')
+		).toMatchObject({ status: 'cancelled' })
+		expect(
+			run.plan.steps.find((step) => step.id === 'fix-completed-status')
+		).toMatchObject({ status: 'cancelled' })
+		expect(
+			run.plan.steps.find((step) => step.id === 'verify-overdue-v1')
+		).toMatchObject({ status: 'cancelled' })
+		expect(
+			run.plan.steps.find((step) => step.id === 'inspect-overdue-boundary')
+		).toMatchObject({
+			status: 'completed',
+			createdInVersion: 2,
+			dependsOn: ['reproduce-failure']
+		})
+		expect(
+			run.plan.steps.find((step) => step.id === 'verify-overdue-v2')
+		).toMatchObject({
+			status: 'completed',
+			createdInVersion: 2,
+			dependsOn: ['fix-boundary']
+		})
 		await cleanup(workspaces, run.id)
 	})
 
@@ -84,6 +107,9 @@ describe.sequential('Software Engineering Agent Runtime', () => {
 		expect(completed.verification.deletedPaths).toEqual([
 			'src/legacy/legacy-task.mapper.ts'
 		])
+		expect(completed.report?.completedCriteria).toEqual(
+			completed.completionCriteria
+		)
 		await expect(access(target)).rejects.toThrow()
 		await cleanup(workspaces, completed.id)
 	})
@@ -124,6 +150,7 @@ describe.sequential('Software Engineering Agent Runtime', () => {
 
 		const stopped = await runtime.decideApproval(waiting.id, false)
 		expect(stopped.status).toBe('stopped')
+		expect(stopped.report?.completedCriteria).toEqual([])
 		await expect(access(target)).resolves.toBeUndefined()
 		await cleanup(workspaces, stopped.id)
 	})

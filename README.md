@@ -221,9 +221,10 @@ AI 时代，很多同学应该都在学习各种各样的 Agent 知识。
 
 ## 如何报名
 
-报名方式有两种：
+公众号提供试读： [课程试读地址](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzcwNjM0Njk2Mg==&action=getalbum&album_id=4577991920081321990#wechat_redirect) 
 
-1. 直接在 [文章合集里点击「购买合集」](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzcwNjM0Njk2Mg==&action=getalbum&album_id=4577991920081321990#wechat_redirect) 即可：通过这种方式后续直接在 **公众号** 进行学习
-2. 私聊我 +V：`sunday9189`：不喜欢公众号阅读的，可以加我购买。通过 **语雀** 进行学习
+如要购买课程，直接扫码加我微信即可：
+
+<img src="README.assets/image-20260811104712879.png" alt="image-20260811104712879" style="zoom: 25%;" />
 
 最后：**祝愿所有同学都能拿到满意的 offer！！！**

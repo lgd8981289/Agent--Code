@@ -1,6 +1,8 @@
 # Environment variables and local secrets
 .env
 .env.*
+!Node/第五章/02-langchain-agent/.env.example
+!Python/第五章/02-langchain-agent/.env.example
 
 # Node.js dependencies and generated files
 node_modules/

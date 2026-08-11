@@ -1,0 +1,20 @@
+{
+	"name": "02-langchain-agent",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "LangChain and DeepSeek minimal Tool Calling Agent example",
+	"scripts": {
+		"start": "node --env-file=.env langchain-agent.js",
+		"check": "node --check langchain-agent.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/deepseek": "1.1.6",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}
+

@@ -1,0 +1,25 @@
+{
+	"name": "03-langchain-core-abstractions",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "LangChain Chat Model、Message、Tool 与 Runnable 核心抽象实验",
+	"scripts": {
+		"model": "node --env-file=.env core-abstractions.js model",
+		"stream": "node --env-file=.env core-abstractions.js stream",
+		"tool": "node core-abstractions.js tool",
+		"calling": "node --env-file=.env core-abstractions.js calling",
+		"runnable": "node --env-file=.env core-abstractions.js runnable",
+		"check": "node --check core-abstractions.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}
+

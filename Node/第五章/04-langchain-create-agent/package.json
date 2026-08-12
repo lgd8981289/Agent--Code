@@ -1,0 +1,20 @@
+{
+	"name": "04-langchain-create-agent",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "通过多轮工具调用理解 LangChain createAgent Runtime",
+	"scripts": {
+		"demo": "node --env-file=.env create-agent.js",
+		"check": "node --check create-agent.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}

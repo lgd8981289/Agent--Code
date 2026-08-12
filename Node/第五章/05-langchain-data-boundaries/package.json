@@ -1,0 +1,20 @@
+{
+	"name": "05-langchain-data-boundaries",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "演示 LangChain Agent State、Runtime Context 与 Structured Output 的数据边界",
+	"scripts": {
+		"demo": "node --env-file=.env data-boundaries.js",
+		"check": "node --check data-boundaries.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}

@@ -1,0 +1,20 @@
+{
+	"name": "07-langgraph-basics",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "使用 LangGraph State、Node、Edge 与 Conditional Edge 实现研发任务分流",
+	"scripts": {
+		"demo": "node task-routing-graph.js demo",
+		"stream": "node task-routing-graph.js stream",
+		"mermaid": "node task-routing-graph.js mermaid",
+		"check": "node --check task-routing-graph.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/langgraph": "1.4.9",
+		"zod": "4.4.3"
+	}
+}

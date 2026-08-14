@@ -8,6 +8,10 @@
 - Agent 如何通过 Structured Output 向后端返回稳定结果；
 - 为什么用户在 Prompt 中伪造租户不能改变实际查询范围。
 
+案例使用 `toolStrategy()` 约束最终结果。由于 DeepSeek Thinking 模式不支持
+该策略需要的强制 `tool_choice`，本案例会关闭 Thinking，只使用普通模式完成
+Tool Calling 和结构化结果生成。
+
 ## 安装
 
 ```bash

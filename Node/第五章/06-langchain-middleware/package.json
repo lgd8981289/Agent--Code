@@ -1,0 +1,23 @@
+{
+	"name": "06-langchain-middleware",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "演示 LangChain Middleware 的权限、预算、结果校验与失败恢复",
+	"scripts": {
+		"demo": "node --env-file=.env middleware-agent.js demo",
+		"permission": "node --env-file=.env middleware-agent.js permission",
+		"retry": "node --env-file=.env middleware-agent.js retry",
+		"budget": "node --env-file=.env middleware-agent.js budget",
+		"check": "node --check middleware-agent.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}

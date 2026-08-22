@@ -1,0 +1,15 @@
+{
+	"name": "09-langchain-source-agent-state",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"inspect": "node inspect-agent-state.js",
+		"check": "node --check inspect-agent-state.js"
+	},
+	"dependencies": {
+		"@langchain/langgraph": "1.4.9",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}

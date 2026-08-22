@@ -1,0 +1,23 @@
+{
+	"name": "08-langchain-langgraph-workflow",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "使用 LangGraph 组织确定性流程，并在风险分析节点中调用 LangChain Agent",
+	"scripts": {
+		"demo": "node --env-file=.env workflow-agent.js demo",
+		"routes": "node workflow-agent.js routes",
+		"mermaid": "node workflow-agent.js mermaid",
+		"check": "node --check workflow-agent.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"@langchain/langgraph": "1.4.9",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}

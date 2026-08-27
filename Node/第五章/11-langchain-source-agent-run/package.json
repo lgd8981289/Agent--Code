@@ -1,0 +1,19 @@
+{
+	"name": "11-langchain-source-agent-run",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"trace": "node agent-run-trace.js",
+		"trace:error": "node agent-run-trace.js error",
+		"check": "node --check agent-run-trace.js && node --check scripted-model.js"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.9",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}

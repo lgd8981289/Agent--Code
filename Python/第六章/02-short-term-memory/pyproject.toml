@@ -1,0 +1,12 @@
+[project]
+name = "agent-course-short-term-memory-python"
+version = "0.1.0"
+description = "LangChain Thread, Checkpointer and short-term memory examples"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain==1.3.15",
+    "langchain-deepseek==1.1.0",
+    "langgraph==1.2.11",
+    "langgraph-checkpoint-postgres==3.1.2",
+    "psycopg[binary,pool]==3.3.5",
+]

@@ -1,0 +1,22 @@
+{
+	"name": "03-long-conversation-context",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "LangChain 长对话消息裁剪、自动摘要与 Context Compaction 实验",
+	"scripts": {
+		"compare": "node compare-context.js",
+		"compact": "node --env-file=.env automatic-compaction.js",
+		"test": "node --test context.test.js",
+		"check": "node --check context.js && node --check compare-context.js && node --check automatic-compaction.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"@langchain/langgraph": "1.4.13",
+		"langchain": "1.5.5"
+	}
+}

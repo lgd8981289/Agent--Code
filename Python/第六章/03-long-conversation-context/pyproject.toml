@@ -1,0 +1,10 @@
+[project]
+name = "agent-course-long-conversation-context-python"
+version = "0.1.0"
+description = "LangChain long conversation trimming and summarization middleware examples"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain==1.3.15",
+    "langchain-deepseek==1.1.0",
+    "langgraph==1.2.11",
+]

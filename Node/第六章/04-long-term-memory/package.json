@@ -1,0 +1,29 @@
+{
+	"name": "04-long-term-memory",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "LangChain Store、用户画像与跨会话长期记忆实验",
+	"scripts": {
+		"store": "node store-basics.js",
+		"setup": "node --env-file=.env setup-storage.js",
+		"reset": "node --env-file=.env profile-agent.js reset",
+		"remember": "node --env-file=.env profile-agent.js remember",
+		"recall": "node --env-file=.env profile-agent.js recall",
+		"isolation": "node --env-file=.env profile-agent.js isolation",
+		"demo": "node --env-file=.env profile-agent.js demo",
+		"test": "node --test profile-store.test.js",
+		"check": "node --check profile-store.js && node --check store-basics.js && node --check storage.js && node --check setup-storage.js && node --check profile-agent.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"@langchain/langgraph": "1.4.13",
+		"@langchain/langgraph-checkpoint-postgres": "1.0.5",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}

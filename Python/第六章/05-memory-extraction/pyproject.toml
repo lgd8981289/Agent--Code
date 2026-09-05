@@ -1,0 +1,24 @@
+[project]
+name = "agent-course-memory-extraction-python"
+version = "0.1.0"
+description = "Extract memory candidates from conversations and review them before writing to LangGraph Store"
+requires-python = ">=3.11"
+dependencies = [
+    "langchain==1.3.15",
+    "langchain-deepseek==1.1.0",
+    "langgraph==1.2.11",
+    "pydantic==2.13.4",
+]
+
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = [
+    "conversation",
+    "memory_extraction",
+    "memory_extractor",
+    "memory_policy",
+    "memory_store",
+]

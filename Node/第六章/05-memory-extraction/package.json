@@ -1,0 +1,23 @@
+{
+	"name": "05-memory-extraction",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "从对话中提取候选记忆，并经过策略校验后写入 Store",
+	"scripts": {
+		"demo": "node memory-extraction.js replay",
+		"extract": "node --env-file=.env memory-extraction.js ai",
+		"no-consent": "node memory-extraction.js no-consent",
+		"test": "node --test memory-policy.test.js",
+		"check": "node --check conversation.js && node --check memory-extractor.js && node --check memory-policy.js && node --check memory-store.js && node --check memory-extraction.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"@langchain/langgraph": "1.4.13",
+		"zod": "4.4.3"
+	}
+}

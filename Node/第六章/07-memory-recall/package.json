@@ -1,0 +1,19 @@
+{
+	"name": "07-memory-recall",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "精确读取画像、检索历史记忆并组织本次模型输入",
+	"scripts": {
+		"demo": "node --env-file=.env memory-recall.js",
+		"answer": "node --env-file=.env memory-recall.js answer",
+		"test": "node --test recall.test.js",
+		"check": "node --check fixtures.js && node --check models.js && node --check recall.js && node --check memory-recall.js"
+	},
+	"engines": { "node": ">=20.6.0" },
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"@langchain/langgraph": "1.4.13"
+	}
+}

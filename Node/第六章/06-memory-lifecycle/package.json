@@ -1,0 +1,17 @@
+{
+	"name": "06-memory-lifecycle",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "验证长期记忆的去重、冲突修正、过期过滤和删除后防止重新写入",
+	"scripts": {
+		"demo": "node memory-lifecycle.js",
+		"test": "node --test memory-manager.test.js",
+		"check": "node --check memory-manager.js && node --check memory-lifecycle.js && node --check scenarios.js"
+	},
+	"engines": { "node": ">=20.6.0" },
+	"dependencies": {
+		"@langchain/langgraph": "1.4.13",
+		"zod": "4.4.3"
+	}
+}

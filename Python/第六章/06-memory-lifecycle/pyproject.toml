@@ -1,0 +1,19 @@
+[project]
+name = "agent-course-memory-lifecycle-python"
+version = "0.1.0"
+description = "Long-term memory lifecycle examples with deduplication, correction, expiry and deletion blocks"
+requires-python = ">=3.11"
+dependencies = [
+    "langgraph==1.2.11",
+]
+
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = [
+    "memory_lifecycle",
+    "memory_manager",
+    "scenarios",
+]

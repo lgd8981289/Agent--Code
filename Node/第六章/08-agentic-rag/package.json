@@ -1,0 +1,21 @@
+{
+	"name": "08-agentic-rag",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"description": "使用 LangGraph 实现按需检索、多轮补查与证据判断",
+	"scripts": {
+		"demo": "node --env-file=.env agentic-rag.js multi",
+		"test": "node --test workflow.test.js"
+	},
+	"engines": {
+		"node": ">=20.6.0"
+	},
+	"dependencies": {
+		"@langchain/core": "1.2.5",
+		"@langchain/deepseek": "1.1.6",
+		"@langchain/langgraph": "1.4.13",
+		"langchain": "1.5.5",
+		"zod": "4.4.3"
+	}
+}

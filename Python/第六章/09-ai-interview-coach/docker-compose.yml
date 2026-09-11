@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: ai-interview-coach-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: interview_coach
+      POSTGRES_USER: interview_course
+      POSTGRES_PASSWORD: interview_course
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U interview_course -d interview_coach"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - interview-coach-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  interview-coach-postgres-data:

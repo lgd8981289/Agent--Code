@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>AI 面试教练 Agent</title>
+	<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+	<div class="app-shell">
+		<header class="topbar">
+			<div class="brand">
+				<div class="brand-mark">AI</div>
+				<div>
+					<strong>AI 面试教练</strong>
+					<span>Memory Lab</span>
+				</div>
+			</div>
+			<div class="topbar-status">
+				<span class="status-dot"></span>
+				Python FastAPI 服务
+			</div>
+		</header>
+
+		<main class="workspace">
+			<aside class="sidebar">
+				<label class="field-label" for="user">当前候选人</label>
+				<div class="user-select">
+					<span>👤</span>
+					<select id="user"></select>
+				</div>
+
+				<div class="mode-control" aria-label="运行模式">
+					<button id="modeReplay" class="active" type="button">Replay</button>
+					<button id="modeAi" type="button">AI</button>
+				</div>
+
+				<button id="newSession" class="primary-action" type="button">▶ 开始专项面试</button>
+				<button id="reviewSession" class="secondary-action" type="button">
+					↻ 复习薄弱点
+					<span id="weakCount" class="count hidden">0</span>
+				</button>
+
+				<div class="section-heading">
+					<span>历史面试</span>
+					<span>⌁</span>
+				</div>
+				<div id="sessionList" class="session-list"></div>
+			</aside>
+
+			<section class="interview-panel">
+				<div class="panel-header">
+					<div>
+						<span class="eyebrow">INTERVIEW SESSION</span>
+						<h1 id="panelTitle">准备开始一场面试</h1>
+					</div>
+					<span id="sessionBadge" class="session-badge hidden"></span>
+				</div>
+
+				<div id="error" class="error-banner hidden"></div>
+
+				<div id="welcome" class="welcome-state">
+					<div class="welcome-icon">🎯</div>
+					<h2>用一场真实的面试，验证 Agent Memory</h2>
+					<p>系统会记住你的面试进度和薄弱点，并在新会话中生成针对性复测。</p>
+					<button id="welcomeStart" class="primary-action compact" type="button">开始面试</button>
+				</div>
+
+				<div id="sessionArea" class="session-area hidden">
+					<div id="chat" class="chat-stream"></div>
+
+					<div id="composer" class="composer">
+						<div class="answer-shortcuts">
+							<button id="weakAnswer" type="button">填入不完整回答</button>
+							<button id="completeAnswer" type="button">填入完整回答</button>
+						</div>
+						<textarea id="answer" rows="4" placeholder="输入你的回答…"></textarea>
+						<div class="composer-footer">
+							<span>Ctrl / Cmd + Enter 提交</span>
+							<button id="submitAnswer" class="send-button" type="button">提交回答</button>
+						</div>
+					</div>
+
+					<div id="turnResult" class="turn-result hidden">
+						<div id="verdict" class="verdict"></div>
+						<button id="nextQuestion" class="primary-action compact" type="button">继续下一题 ›</button>
+					</div>
+				</div>
+			</section>
+
+			<aside class="inspector">
+				<section class="inspector-section">
+					<div class="section-heading large">
+						<span>👤 面试画像</span>
+						<button id="editProfile" class="icon-button" type="button" title="编辑面试画像">⚙</button>
+					</div>
+					<div id="profileView" class="profile-content"></div>
+					<div id="profileEditor" class="profile-content hidden">
+						<label>目标岗位<input id="profileRole" /></label>
+						<label>开发经验<input id="profileExperience" /></label>
+						<label>专项方向<input id="profileTopics" /></label>
+						<label>反馈偏好<input id="profileStyle" /></label>
+						<button id="saveProfile" class="save-button" type="button">保存画像</button>
+					</div>
+				</section>
+
+				<section class="inspector-section grow">
+					<div class="section-heading large">
+						<span>🧠 训练记忆</span>
+						<small id="memoryCount">0 条</small>
+					</div>
+					<div id="memoryList" class="memory-list"></div>
+				</section>
+
+				<section id="sessionInspector" class="inspector-section hidden">
+					<div class="section-heading large">
+						<span>📚 本轮依据</span>
+						<small id="sourceCount">0 条</small>
+					</div>
+					<div id="sourceList"></div>
+					<div id="traceBlock" class="trace-block hidden">
+						<div class="trace-title">Graph 轨迹</div>
+						<ol id="traceList"></ol>
+					</div>
+				</section>
+			</aside>
+		</main>
+
+		<div id="loading" class="loading-bar hidden"></div>
+	</div>
+
+	<script src="/app.js"></script>
+</body>
+</html>

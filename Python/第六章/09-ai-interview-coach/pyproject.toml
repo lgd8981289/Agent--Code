@@ -1,0 +1,35 @@
+[project]
+name = "agent-course-ai-interview-coach-python"
+version = "0.1.0"
+description = "FastAPI AI interview coach with recoverable sessions, long-term memory and Agentic RAG feedback"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115.0,<1.0.0",
+    "httpx>=0.27.0,<1.0.0",
+    "langchain==1.3.15",
+    "langchain-deepseek==1.1.0",
+    "langgraph==1.2.11",
+    "psycopg[binary,pool]==3.3.5",
+    "pydantic==2.13.4",
+    "typing-extensions==4.15.0",
+    "uvicorn[standard]>=0.32.0,<1.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = [
+    "app",
+    "auth",
+    "doctor",
+    "interview_graph",
+    "interview_service",
+    "knowledge",
+    "memory",
+    "model_service",
+    "schemas",
+    "setup_storage",
+    "storage",
+]

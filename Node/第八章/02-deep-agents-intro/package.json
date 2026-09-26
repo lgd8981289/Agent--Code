@@ -1,0 +1,14 @@
+{
+  "name": "02-deep-agents-intro",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file=.env deep-agent.js"
+  },
+  "dependencies": {
+    "@langchain/deepseek": "1.1.13",
+    "deepagents": "1.14.0",
+    "langchain": "1.5.12"
+  }
+}

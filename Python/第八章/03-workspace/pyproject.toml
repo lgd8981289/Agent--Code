@@ -1,0 +1,11 @@
+[project]
+name = "agent-course-workspace-python"
+version = "0.1.0"
+description = "Compare full and selected Deep Agents workspace context"
+requires-python = ">=3.11"
+dependencies = [
+    "deepagents==0.7.19",
+]
+
+[tool.uv]
+package = false

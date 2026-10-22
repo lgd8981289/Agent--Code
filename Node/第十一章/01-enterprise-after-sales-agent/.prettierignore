@@ -1,0 +1,14 @@
+node_modules/
+dist/
+web/dist/
+data/
+workspaces/
+test-artifacts/
+.env
+.env.*
+package-lock.json
+docs/
+README.md
+knowledge/
+samples/
+server/skills/

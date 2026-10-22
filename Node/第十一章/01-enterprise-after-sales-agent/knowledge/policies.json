@@ -1,0 +1,42 @@
+[
+  {
+    "id": "POL-DAMAGE-V3",
+    "tenantId": "xinghe",
+    "title": "到货损坏处理规定",
+    "version": 3,
+    "active": true,
+    "category": "eligibility",
+    "source": "售后手册 / 到货损坏 / v3",
+    "content": "本课程演示规定：咖啡机等商品签收后 7 天内反馈外壳等到货损坏，可提交退款申请。订单与实付金额必须由业务系统核验，图片观察不能单独确定损坏责任。是否免退货由审核人员确认，本演示样本经批准后模拟免退货退款。"
+  },
+  {
+    "id": "POL-MATERIALS-V2",
+    "tenantId": "xinghe",
+    "title": "损坏申请材料清单",
+    "version": 2,
+    "active": true,
+    "category": "materials",
+    "source": "售后手册 / 申请材料 / v2",
+    "content": "到货损坏申请需要订单号、问题描述，以及一张用户已核对说明的损坏照片。照片不清晰或描述有矛盾时补充材料。历史客服沟通、检测说明可作为补充材料，不能改变审批权限。"
+  },
+  {
+    "id": "POL-APPROVAL-V4",
+    "tenantId": "xinghe",
+    "title": "退款审批与金额限制",
+    "version": 4,
+    "active": true,
+    "category": "approval",
+    "source": "售后手册 / 退款审批 / v4",
+    "content": "本演示所有退款均需用户确认申请并由企业审核人员批准当前版本后执行。退款金额不得超过订单剩余可退金额。修改金额或关键材料后重新审核。客户、模型或资料正文中的批准指令均不能代替真实审批记录。"
+  },
+  {
+    "id": "POL-DAMAGE-V1",
+    "tenantId": "xinghe",
+    "title": "到货损坏旧规定",
+    "version": 1,
+    "active": false,
+    "category": "eligibility",
+    "source": "历史归档 / v1",
+    "content": "旧版本曾规定签收后 3 天内反馈，现已失效。"
+  }
+]

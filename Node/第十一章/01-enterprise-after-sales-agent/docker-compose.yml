@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "127.0.0.1:5441:5432"
+    environment:
+      POSTGRES_USER: aftersales_course
+      POSTGRES_PASSWORD: aftersales_course
+      POSTGRES_DB: aftersales_agent
+    volumes:
+      - aftersales_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aftersales_course -d aftersales_agent"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes:
+  aftersales_pg:

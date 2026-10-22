@@ -1,0 +1,18 @@
+[project]
+name = "enterprise-after-sales-agent-python"
+version = "1.0.0"
+description = "企业售后处理 Agent：Python、MCP、LangGraph、PostgreSQL 与 Vue 3"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi==0.159.1", "uvicorn==0.54.0", "python-multipart==0.0.32",
+  "langchain==1.4.7", "langchain-deepseek==1.1.1", "langgraph==1.2.16",
+  "langgraph-checkpoint-postgres==3.2.0", "deepagents==0.7.30",
+  "psycopg[binary,pool]==3.3.6", "mcp==2.3.0", "httpx==0.28.1",
+  "websockets==16.0", "pydantic==2.14.1",
+]
+
+[project.optional-dependencies]
+milvus = ["pymilvus==3.0.2"]
+
+[tool.uv]
+package = false
